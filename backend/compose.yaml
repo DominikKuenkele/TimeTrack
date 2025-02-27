@@ -1,0 +1,13 @@
+services:
+  go:
+    build: .
+    restart: always
+    ports: 
+    - 8080:80
+
+  db:
+    image: postgres:latest
+    restart: always
+    shm_size: 128mb
+    environment:
+      POSTGRES_PASSWORD: example
