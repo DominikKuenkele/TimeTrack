@@ -3,24 +3,33 @@ package main
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
+	"github.com/DominikKuenkele/TimeTrack/libraries/server"
+	"github.com/DominikKuenkele/TimeTrack/project"
 )
 
-func defaultHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("Received: %s - %s\n", r.Method, r.URL)
-	w.WriteHeader(404)
+func defaultHandler(l logger.Logger) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		l.Error("Couldn't handle request")
+		w.WriteHeader(404)
+	}
 }
 
 func projectHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Handling Project")
 	fmt.Fprintf(w, "Hello, world!")
 }
 
 func main() {
-	http.HandleFunc("/", defaultHandler)
-	http.HandleFunc("/project", projectHandler)
+	logger := logger.NewLogger()
 
-	fmt.Println("Starting server on :80")
-	if err := http.ListenAndServe(":80", nil); err != nil {
-		fmt.Println("Error starting server:", err)
+	server := server.NewServer("", "80", logger)
+	server.AddHandler("/", http.HandlerFunc(defaultHandler(logger)))
+
+	projectHandler := project.NewHandler(logger)
+	server.AddHandler("/project", http.HandlerFunc(projectHandler.ProjectHandler))
+
+	if err := server.Start(); err != nil {
+		logger.Error(err.Error())
 	}
 }
