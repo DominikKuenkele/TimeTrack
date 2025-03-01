@@ -1,39 +1,37 @@
 package project
 
 import (
-	"net/http"
-
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 )
 
 type Handler interface {
-	ProjectHandler(w http.ResponseWriter, r *http.Request)
-
 	Add(name string)
 	Get(name string)
 	Delete(name string)
 }
 
-type impl struct {
-	logger logger.Logger
+type handlerImpl struct {
+	logger     logger.Logger
+	repository Repository
 }
 
-var _ Handler = &impl{}
+var _ Handler = &handlerImpl{}
 
-func NewHandler(l logger.Logger) Handler {
-	return &impl{
-		logger: l,
+func NewHandler(l logger.Logger, repository Repository) Handler {
+	return &handlerImpl{
+		logger:     l,
+		repository: repository,
 	}
 }
 
-func (i *impl) Add(name string) {
-	i.logger.Info("Add %s", name)
+func (h *handlerImpl) Add(name string) {
+	h.logger.Info("Add %s", name)
 }
 
-func (i *impl) Delete(name string) {
-	i.logger.Info("Delete %s", name)
+func (h *handlerImpl) Delete(name string) {
+	h.logger.Info("Delete %s", name)
 }
 
-func (i *impl) Get(name string) {
-	i.logger.Info("Get %s", name)
+func (h *handlerImpl) Get(name string) {
+	h.logger.Info("Get %s", name)
 }

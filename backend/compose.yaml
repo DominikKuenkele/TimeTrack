@@ -5,10 +5,17 @@ services:
     ports: 
     - 8080:80
     - 2345:2345
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
-  # db:
-  #   image: postgres:latest
-  #   restart: always
-  #   shm_size: 128mb
-  #   environment:
-  #     POSTGRES_PASSWORD: example
+  db:
+    image: postgres:latest
+    restart: always
+    shm_size: 128mb
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}

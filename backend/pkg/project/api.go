@@ -2,15 +2,35 @@ package project
 
 import (
 	"net/http"
+
+	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 )
 
-func (i *impl) ProjectHandler(w http.ResponseWriter, r *http.Request) {
+type API interface {
+	HTTPHandler(w http.ResponseWriter, r *http.Request)
+}
+
+type apiImpl struct {
+	logger         logger.Logger
+	projectHandler Handler
+}
+
+var _ API = &apiImpl{}
+
+func NewAPI(logger logger.Logger, projectHandler Handler) API {
+	return &apiImpl{
+		logger:         logger,
+		projectHandler: projectHandler,
+	}
+}
+
+func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		i.Get("test")
+		a.projectHandler.Get("test")
 	case "POST":
-		i.Add("test")
+		a.projectHandler.Add("test")
 	case "DELETE":
-		i.Delete("test")
+		a.projectHandler.Delete("test")
 	}
 }
