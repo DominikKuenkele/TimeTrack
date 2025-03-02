@@ -1,4 +1,4 @@
-package project
+package projects
 
 type Project struct {
 	ID   int32

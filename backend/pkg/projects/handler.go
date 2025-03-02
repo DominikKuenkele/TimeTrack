@@ -1,4 +1,4 @@
-package project
+package projects
 
 import (
 	"errors"
@@ -10,6 +10,7 @@ type Handler interface {
 	Add(name string) error
 	Get(name string) (*Project, error)
 	Delete(name string) error
+	StartTracking(name string) error
 }
 
 type handlerImpl struct {
@@ -48,4 +49,17 @@ func (h *handlerImpl) Get(name string) (*Project, error) {
 	}
 
 	return h.repository.GetProject(name)
+}
+
+func (h *handlerImpl) StartTracking(name string) error {
+	if name == "" {
+		return errors.New("Name must not be empty")
+	}
+
+	project, err := h.Get(name)
+	if err != nil {
+		return err
+	}
+
+	return h.repository.StartTracking(project.ID)
 }

@@ -1,8 +1,9 @@
-package project
+package projects
 
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/database"
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
@@ -12,6 +13,7 @@ type Repository interface {
 	AddProject(name string) error
 	GetProject(name string) (*Project, error)
 	DeleteProject(name string) error
+	StartTracking(projectID int32) error
 }
 
 type repositoryImpl struct {
@@ -32,8 +34,20 @@ func NewRepository(logger logger.Logger, database database.Database) (Repository
 	}, nil
 }
 
+const (
+	tableProjects      = "projects"
+	columnProjectsID   = "id"
+	columnProjectsName = "name"
+
+	tableTracking           = "tracking"
+	columnTrackingId        = "id"
+	columnTrackingProject   = "project_id"
+	columnTrackingStartTime = "start_time"
+	columnTrackingEndTime   = "end_time"
+)
+
 func (r *repositoryImpl) AddProject(name string) error {
-	_, err := r.database.Exec("INSERT INTO Projects (Name) VALUES ($1);", name)
+	_, err := r.database.Exec("INSERT INTO "+tableProjects+" ("+columnProjectsName+") VALUES ($1);", name)
 	if err != nil {
 		r.logger.Error("Couldn't add project: %+v", err)
 		switch {
@@ -49,7 +63,11 @@ func (r *repositoryImpl) AddProject(name string) error {
 
 func (r *repositoryImpl) GetProject(name string) (*Project, error) {
 	var project = &Project{}
-	if err := r.database.QueryRow("SELECT ID, Name FROM Projects WHERE Name=$1;", []any{name}, &project.ID, &project.Name); err != nil {
+	if err := r.database.QueryRow(
+		"SELECT "+columnProjectsID+", "+columnProjectsName+" FROM "+tableProjects+" WHERE "+columnProjectsName+"=$1;",
+		[]any{name},
+		&project.ID, &project.Name,
+	); err != nil {
 		r.logger.Error("Couldn't get project: %+v", err)
 		switch {
 		case errors.As(err, &database.NoRowsError{}):
@@ -64,7 +82,7 @@ func (r *repositoryImpl) GetProject(name string) (*Project, error) {
 }
 
 func (r *repositoryImpl) DeleteProject(name string) error {
-	res, err := r.database.Exec("DELETE FROM Projects WHERE Name=$1;", name)
+	res, err := r.database.Exec("DELETE FROM "+tableProjects+" WHERE "+columnProjectsName+"=$1;", name)
 	if err != nil {
 		r.logger.Error("Couldn't delete project: %+v", err)
 
@@ -77,6 +95,19 @@ func (r *repositoryImpl) DeleteProject(name string) error {
 		return &database.NoRowsError{
 			Message: fmt.Sprintf("Project '%s' not found", name),
 		}
+	}
+
+	return nil
+}
+
+func (r *repositoryImpl) StartTracking(projectID int32) error {
+	if _, err := r.database.Exec(
+		"INSERT INTO "+tableTracking+"("+columnTrackingProject+", "+columnTrackingStartTime+") VALUES($1, $2);",
+		projectID, time.Now(),
+	); err != nil {
+		r.logger.Error("Couldn't start timer for project '%s': %+v", projectID, err)
+
+		return fmt.Errorf("Database error")
 	}
 
 	return nil

@@ -7,7 +7,7 @@ import (
 	"github.com/DominikKuenkele/TimeTrack/libraries/database"
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 	"github.com/DominikKuenkele/TimeTrack/libraries/server"
-	"github.com/DominikKuenkele/TimeTrack/project"
+	"github.com/DominikKuenkele/TimeTrack/projects"
 )
 
 func defaultHandler(l logger.Logger) http.HandlerFunc {
@@ -43,12 +43,12 @@ func main() {
 	server := server.NewServer("", "80", logger)
 	server.AddHandler("/", defaultHandler(logger))
 
-	project, err := project.BuildProject(logger, database)
+	project, err := projects.BuildProject(logger, database)
 	if err != nil {
 		logger.Error(err.Error())
 		return
 	}
-	server.AddHandler("/project", project.HTTPHandler)
+	server.AddHandler(projects.Prefix+"/", project.HTTPHandler)
 
 	if err := server.Start(); err != nil {
 		logger.Error(err.Error())
