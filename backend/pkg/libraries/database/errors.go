@@ -5,11 +5,11 @@ type DuplicateError struct {
 	Err     error
 }
 
-func (e *DuplicateError) Error() string {
+func (e DuplicateError) Error() string {
 	return e.Message
 }
 
-func (e *DuplicateError) Unwrap() error {
+func (e DuplicateError) Unwrap() error {
 	return e.Err
 }
 
@@ -18,10 +18,10 @@ type NoRowsError struct {
 	Err     error
 }
 
-func (e *NoRowsError) Error() string {
+func (e NoRowsError) Error() string {
 	return e.Message
 }
 
-func (e *NoRowsError) Unwrap() error {
+func (e NoRowsError) Unwrap() error {
 	return e.Err
 }

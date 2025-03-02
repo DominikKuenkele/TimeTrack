@@ -3,6 +3,9 @@ package logger
 import (
 	"fmt"
 	"log"
+	"strings"
+
+	"github.com/DominikKuenkele/TimeTrack/libraries/logger/loglevel"
 )
 
 const (
@@ -18,30 +21,63 @@ const (
 )
 
 type Logger interface {
+	Log(format string, a ...any)
+	Debug(format string, a ...any)
 	Info(format string, a ...any)
 	Warning(format string, a ...any)
 	Error(format string, a ...any)
 }
 
-type Impl struct{}
-
-func NewLogger() Logger {
-	return &Impl{}
+type impl struct {
+	logLevel loglevel.ID
 }
 
-var _ Logger = &Impl{}
+func NewLogger(level string) (Logger, error) {
+	logLevelID, err := loglevel.FromString(level)
+	if err != nil {
+		return nil, err
+	}
 
-func (*Impl) Info(format string, a ...any) {
+	logger := &impl{
+		logLevel: logLevelID,
+	}
+
+	logger.Log("Created logger with log level %s", logLevelID)
+
+	return logger, nil
+}
+
+var _ Logger = &impl{}
+
+func (*impl) Log(format string, a ...any) {
 	message := fmt.Sprintf(format, a...)
 	log.Println(gray + message + reset)
 }
 
-func (*Impl) Error(format string, a ...any) {
-	message := fmt.Sprintf(format, a...)
-	log.Println(red + message + reset)
+func (i *impl) Debug(format string, a ...any) {
+	if i.logLevel <= loglevel.Debug {
+		message := fmt.Sprintf(format, a...)
+		log.Println(white + strings.ToUpper(loglevel.Debug.String()) + ": " + message + reset)
+	}
 }
 
-func (*Impl) Warning(format string, a ...any) {
-	message := fmt.Sprintf(format, a...)
-	log.Println(yellow + message + reset)
+func (i *impl) Info(format string, a ...any) {
+	if i.logLevel <= loglevel.Info {
+		message := fmt.Sprintf(format, a...)
+		log.Println(gray + strings.ToUpper(loglevel.Info.String()) + ": " + message + reset)
+	}
+}
+
+func (i *impl) Warning(format string, a ...any) {
+	if i.logLevel <= loglevel.Warning {
+		message := fmt.Sprintf(format, a...)
+		log.Println(yellow + strings.ToUpper(loglevel.Warning.String()) + ": " + message + reset)
+	}
+}
+
+func (i *impl) Error(format string, a ...any) {
+	if i.logLevel <= loglevel.Error {
+		message := fmt.Sprintf(format, a...)
+		log.Println(red + strings.ToUpper(loglevel.Error.String()) + ": " + message + reset)
+	}
 }

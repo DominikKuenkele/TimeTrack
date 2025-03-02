@@ -9,6 +9,8 @@ type Config struct {
 	PostgresDB       string `env:"POSTGRES_DB,required"`
 	PostgresUser     string `env:"POSTGRES_USER,required"`
 	PostgresPassword string `env:"POSTGRES_PASSWORD,required"`
+
+	LogLevel string `env:"LOG_LEVEL" envDefault:"debug"`
 }
 
 func ReadConfig() (Config, error) {

@@ -51,9 +51,8 @@ func (r *repositoryImpl) GetProject(name string) (*Project, error) {
 	var project = &Project{}
 	if err := r.database.QueryRow("SELECT ID, Name FROM Projects WHERE Name=$1;", []any{name}, &project.ID, &project.Name); err != nil {
 		r.logger.Error("Couldn't get project: %+v", err)
-		var noRowsError *database.NoRowsError
 		switch {
-		case errors.As(err, &noRowsError):
+		case errors.As(err, &database.NoRowsError{}):
 			return &Project{}, fmt.Errorf("Project '%s' not found", name)
 		default:
 			return &Project{}, fmt.Errorf("Database error")

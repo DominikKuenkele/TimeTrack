@@ -18,12 +18,14 @@ func defaultHandler(l logger.Logger) http.HandlerFunc {
 }
 
 func main() {
-	logger := logger.NewLogger()
-
 	cfg, err := config.ReadConfig()
 	if err != nil {
-		logger.Error("Couldn't load config: %+v", err)
-		return
+		panic(err)
+	}
+
+	logger, err := logger.NewLogger(cfg.LogLevel)
+	if err != nil {
+		panic(err)
 	}
 
 	database, err := database.NewDatabase(logger, database.Config{
