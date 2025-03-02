@@ -10,7 +10,7 @@ import (
 	"github.com/DominikKuenkele/TimeTrack/project"
 )
 
-func defaultHandler(l logger.Logger) func(http.ResponseWriter, *http.Request) {
+func defaultHandler(l logger.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		l.Error("Couldn't handle request")
 		w.WriteHeader(404)
@@ -36,12 +36,17 @@ func main() {
 		logger.Error("Couldn't create database: %+v", err)
 		return
 	}
+	defer database.Close()
 
 	server := server.NewServer("", "80", logger)
-	server.AddHandler("/", http.HandlerFunc(defaultHandler(logger)))
+	server.AddHandler("/", defaultHandler(logger))
 
-	project := project.BuildProject(logger, database)
-	server.AddHandler("/project", http.HandlerFunc(project.HTTPHandler))
+	project, err := project.BuildProject(logger, database)
+	if err != nil {
+		logger.Error(err.Error())
+		return
+	}
+	server.AddHandler("/project", project.HTTPHandler)
 
 	if err := server.Start(); err != nil {
 		logger.Error(err.Error())

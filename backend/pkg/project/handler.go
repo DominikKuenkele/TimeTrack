@@ -1,13 +1,15 @@
 package project
 
 import (
+	"errors"
+
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 )
 
 type Handler interface {
-	Add(name string)
-	Get(name string)
-	Delete(name string)
+	Add(name string) error
+	Get(name string) (*Project, error)
+	Delete(name string) error
 }
 
 type handlerImpl struct {
@@ -24,14 +26,26 @@ func NewHandler(l logger.Logger, repository Repository) Handler {
 	}
 }
 
-func (h *handlerImpl) Add(name string) {
-	h.logger.Info("Add %s", name)
+func (h *handlerImpl) Add(name string) error {
+	if name == "" {
+		return errors.New("Name must not be empty")
+	}
+
+	return h.repository.AddProject(name)
 }
 
-func (h *handlerImpl) Delete(name string) {
-	h.logger.Info("Delete %s", name)
+func (h *handlerImpl) Delete(name string) error {
+	if name == "" {
+		return errors.New("Name must not be empty")
+	}
+
+	return h.repository.DeleteProject(name)
 }
 
-func (h *handlerImpl) Get(name string) {
-	h.logger.Info("Get %s", name)
+func (h *handlerImpl) Get(name string) (*Project, error) {
+	if name == "" {
+		return &Project{}, errors.New("Name must not be empty")
+	}
+
+	return h.repository.GetProject(name)
 }

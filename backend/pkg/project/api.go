@@ -1,7 +1,9 @@
 package project
 
 import (
+	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 )
@@ -25,12 +27,45 @@ func NewAPI(logger logger.Logger, projectHandler Handler) API {
 }
 
 func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
+	queryParams := r.URL.Query()
+	name := queryParams.Get("name")
+
+	w.Header().Set("Content-Type", "application/json")
+	var err error
 	switch r.Method {
 	case "GET":
-		a.projectHandler.Get("test")
+		var project *Project
+		project, err = a.projectHandler.Get(name)
+		if err == nil {
+			w.WriteHeader(http.StatusOK)
+
+			jsonResponse, _ := json.Marshal(
+				map[string]string{
+					"id":   strconv.Itoa(int(project.ID)),
+					"name": project.Name,
+				})
+			w.Write(jsonResponse)
+		}
 	case "POST":
-		a.projectHandler.Add("test")
+		err = a.projectHandler.Add(name)
+		if err == nil {
+			w.WriteHeader(http.StatusCreated)
+		}
 	case "DELETE":
-		a.projectHandler.Delete("test")
+		err = a.projectHandler.Delete(name)
+		if err == nil {
+			w.WriteHeader(http.StatusOK)
+		}
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+
+		jsonResponse, _ := json.Marshal(
+			map[string]string{
+				"error":   "Invalid Input",
+				"message": err.Error(),
+			})
+		w.Write(jsonResponse)
 	}
 }

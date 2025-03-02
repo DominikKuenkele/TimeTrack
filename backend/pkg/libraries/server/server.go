@@ -9,7 +9,7 @@ import (
 
 type Server interface {
 	Start() error
-	AddHandler(pattern string, handler http.Handler)
+	AddHandler(pattern string, handler http.HandlerFunc)
 }
 
 type serverConfig struct {
@@ -38,11 +38,11 @@ func (s *serverConfig) Start() error {
 	return http.ListenAndServe(url, s.mux)
 }
 
-func (s *serverConfig) AddHandler(pattern string, handler http.Handler) {
+func (s *serverConfig) AddHandler(pattern string, handler http.HandlerFunc) {
 	s.mux.Handle(pattern, s.logMiddleware(handler))
 }
 
-func (s *serverConfig) logMiddleware(h http.Handler) http.Handler {
+func (s *serverConfig) logMiddleware(h http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.logger.Info("Received request: %s %s", r.Method, r.URL.String())
 

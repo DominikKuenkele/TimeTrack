@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS Projects (
+    ID SERIAL PRIMARY KEY,
+    Name varchar(50) NOT NULL UNIQUE
+)
