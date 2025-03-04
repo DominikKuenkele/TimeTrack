@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Remote Debug",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "preLaunchTask": "Build and Start Debug",
+            "postDebugTask": "Stop debug container",
+            "cwd": "${workspaceFolder}/backend/pkg",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "showLog": true,
+            "substitutePath": [
+                {
+                    "from": "${workspaceFolder}/backend/pkg",
+                    "to": "/app"
+                }
+            ],
+            "apiVersion": 2
+        }
+    ]
+}

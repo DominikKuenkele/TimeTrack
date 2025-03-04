@@ -1,0 +1,78 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Docker image",
+			"type": "shell",
+			"command": "cd backend && docker build --target builder .",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "Start debug container",
+			"type": "shell",
+			"command": "cd backend && docker compose --profile debug up",
+			"isBackground": true,
+			"problemMatcher": {
+				"pattern": [
+					{
+						"regexp": "API server listening at: .+:2345",
+						"file": 1,
+						"line": 1,
+						"message": 1
+					}
+				],
+				"background": {
+					"activeOnStart": true,
+					"beginsPattern": ".*",
+					"endsPattern": "API server listening at: .+:2345"
+				}
+			}
+		},
+		{
+			"label": "Stop debug container",
+			"type": "shell",
+			"command": "cd backend && docker compose --profile debug down -v",
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build and Start Debug",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"Build Docker image",
+				"Start debug container"
+			],
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "Deploy production",
+			"type": "shell",
+			"command": "cd backend && docker compose --profile prod up -d",
+			"isBackground": false,
+			"group": "none",
+			"problemMatcher": []
+		},
+		{
+			"label": "Stop production",
+			"type": "shell",
+			"command": "cd backend && docker compose --profile prod down",
+			"group": "none",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build and deploy production",
+			"dependsOrder": "sequence",
+			"dependsOn": [
+				"Build Docker image",
+				"Deploy production"
+			],
+			"group": "none",
+			"problemMatcher": []
+		}
+	]
+}
