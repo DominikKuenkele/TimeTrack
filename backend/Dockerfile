@@ -1,15 +1,30 @@
-FROM golang:1.23
+FROM golang:1.23 AS builder
 
-WORKDIR /usr/src/time-track
+WORKDIR /app
 
-COPY ./pkg/go.mod ./pkg/go.sum ./
+COPY pkg/go.mod pkg/go.sum ./
 RUN go mod download
 
-RUN CGO_ENABLED=0 go install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@latest
+COPY pkg/ .
 
-COPY ./pkg .
-RUN CGO_ENABLED=0 go build -gcflags "all=-N -l" -o /usr/local/bin/time-track main.go
+RUN CGO_ENABLED=0 go build -gcflags="all=-N -l" -o bin/time-track ./main.go
 
-EXPOSE 80 2345
+# -----------------------
+FROM golang:1.23 AS debug
 
-CMD ["dlv", "exec", "/usr/local/bin/time-track", "--headless", "--listen=:2345", "--api-version=2", "--accept-multiclient"]
+WORKDIR /app
+
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
+COPY --from=builder /app/bin/time-track /app/bin/time-track
+
+ENTRYPOINT ["dlv", "--listen=:2345", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "/app/bin/time-track"]
+
+# -----------------------
+FROM alpine:latest AS prod
+
+WORKDIR /app
+
+COPY --from=builder /app/bin/time-track /app/bin/time-track
+
+ENTRYPOINT ["/app/bin/time-track"]

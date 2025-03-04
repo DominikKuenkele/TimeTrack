@@ -1,29 +1,52 @@
 services:
-  go:
-    build: .
-    restart: always
-    ports: 
-    - 8080:80
-    - 2345:2345
+  app:
+    build:
+      context: .
+      target: prod
+    ports:
+      - "8080:80"
     environment:
       - POSTGRES_HOST=db
-      - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["prod"]
+
+  debug:
+    build:
+      context: .
+      target: debug
+    ports:
+      - "8080:80"
+      - "2345:2345"
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["debug"]
 
   db:
     image: postgres:latest
-    restart: always
-    shm_size: 128mb
-    ports:
-      - "5432:5432"
     environment:
-      - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "5432:5432"
     volumes:
+      - postgres_data:/var/lib/postgresql/data
       - ./database:/docker-entrypoint-initdb.d
-      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 2s
+      retries: 5
 
 volumes:
-  pgdata:
+  postgres_data:
