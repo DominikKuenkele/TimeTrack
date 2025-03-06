@@ -11,6 +11,7 @@ type Handler interface {
 	Get(name string) (*Project, error)
 	Delete(name string) error
 	StartTracking(name string) error
+	StopTracking(name string) error
 }
 
 type handlerImpl struct {
@@ -29,7 +30,7 @@ func NewHandler(l logger.Logger, repository Repository) Handler {
 
 func (h *handlerImpl) Add(name string) error {
 	if name == "" {
-		return errors.New("Name must not be empty")
+		return errors.New("name must not be empty")
 	}
 
 	return h.repository.AddProject(name)
@@ -37,7 +38,7 @@ func (h *handlerImpl) Add(name string) error {
 
 func (h *handlerImpl) Delete(name string) error {
 	if name == "" {
-		return errors.New("Name must not be empty")
+		return errors.New("name must not be empty")
 	}
 
 	return h.repository.DeleteProject(name)
@@ -45,7 +46,7 @@ func (h *handlerImpl) Delete(name string) error {
 
 func (h *handlerImpl) Get(name string) (*Project, error) {
 	if name == "" {
-		return &Project{}, errors.New("Name must not be empty")
+		return &Project{}, errors.New("name must not be empty")
 	}
 
 	return h.repository.GetProject(name)
@@ -53,7 +54,7 @@ func (h *handlerImpl) Get(name string) (*Project, error) {
 
 func (h *handlerImpl) StartTracking(name string) error {
 	if name == "" {
-		return errors.New("Name must not be empty")
+		return errors.New("name must not be empty")
 	}
 
 	project, err := h.Get(name)
@@ -62,4 +63,17 @@ func (h *handlerImpl) StartTracking(name string) error {
 	}
 
 	return h.repository.StartTracking(project.ID)
+}
+
+func (h *handlerImpl) StopTracking(name string) error {
+	if name == "" {
+		return errors.New("name must not be empty")
+	}
+
+	project, err := h.Get(name)
+	if err != nil {
+		return err
+	}
+
+	return h.repository.StopTracking(project.ID)
 }

@@ -34,9 +34,10 @@ func NewAPI(logger logger.Logger, projectHandler Handler) API {
 type actionFunc func(w http.ResponseWriter, r *http.Request, name string) error
 
 func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
-	var actionMap = map[string]actionFunc{
+	actionMap := map[string]actionFunc{
 		"":              a.handleNoAction,
 		"startTracking": a.handleStartTrackingAction,
+		"stopTracking":  a.handleStopTrackingAction,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -51,21 +52,21 @@ func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 	if len(pathSegments) > 1 {
 		name, err = url.PathUnescape(pathSegments[1])
 		if err != nil {
-			a.sendInvalidInputResponse(w, fmt.Errorf("Couldn't parse name '%s'", pathSegments[1]))
+			a.sendInvalidInputResponse(w, fmt.Errorf("couldn't parse name '%s'", pathSegments[1]))
 			return
 		}
 	}
 	if len(pathSegments) > 2 {
 		action, err = url.PathUnescape(pathSegments[2])
 		if err != nil {
-			a.sendInvalidInputResponse(w, fmt.Errorf("Couldn't parse action '%s'", pathSegments[2]))
+			a.sendInvalidInputResponse(w, fmt.Errorf("couldn't parse action '%s'", pathSegments[2]))
 			return
 		}
 	}
 
 	actionFunction, found := actionMap[action]
 	if !found {
-		a.sendInvalidInputResponse(w, fmt.Errorf("Action '%s' not supported", action))
+		a.sendInvalidInputResponse(w, fmt.Errorf("action '%s' not supported", action))
 		return
 	}
 
@@ -89,12 +90,10 @@ func (a *apiImpl) sendInvalidInputResponse(w http.ResponseWriter, err error) {
 }
 
 func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name string) error {
-	var err error
-
 	switch r.Method {
 	case http.MethodGet:
-		var project *Project
-		if project, err = a.projectHandler.Get(name); err != nil {
+		project, err := a.projectHandler.Get(name)
+		if err != nil {
 			return err
 		}
 
@@ -106,13 +105,13 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name st
 			})
 		w.Write(jsonResponse)
 	case http.MethodPost:
-		if err = a.projectHandler.Add(name); err != nil {
+		if err := a.projectHandler.Add(name); err != nil {
 			return err
 		}
 
 		w.WriteHeader(http.StatusCreated)
 	case http.MethodDelete:
-		if err = a.projectHandler.Delete(name); err != nil {
+		if err := a.projectHandler.Delete(name); err != nil {
 			return err
 		}
 
@@ -125,11 +124,24 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name st
 }
 
 func (a *apiImpl) handleStartTrackingAction(w http.ResponseWriter, r *http.Request, name string) error {
-	var err error
-
 	switch r.Method {
 	case http.MethodPost:
-		if err = a.projectHandler.StartTracking(name); err != nil {
+		if err := a.projectHandler.StartTracking(name); err != nil {
+			return err
+		}
+
+		w.WriteHeader(http.StatusOK)
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+
+	return nil
+}
+
+func (a *apiImpl) handleStopTrackingAction(w http.ResponseWriter, r *http.Request, name string) error {
+	switch r.Method {
+	case http.MethodPost:
+		if err := a.projectHandler.StopTracking(name); err != nil {
 			return err
 		}
 

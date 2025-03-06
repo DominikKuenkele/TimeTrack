@@ -1,4 +1,4 @@
-FROM golang:1.23 AS builder
+FROM golang:1.24 AS builder
 
 WORKDIR /app
 
@@ -10,13 +10,13 @@ COPY pkg/ .
 RUN CGO_ENABLED=0 go build -gcflags="all=-N -l" -o bin/time-track ./main.go
 
 # -----------------------
-FROM golang:1.23 AS debug
+FROM golang:1.24 AS debug
 
 WORKDIR /app
 
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
-COPY --from=builder /app/bin/time-track /app/bin/time-track
+COPY --from=builder /app .
 
 ENTRYPOINT ["dlv", "--listen=:2345", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "/app/bin/time-track"]
 

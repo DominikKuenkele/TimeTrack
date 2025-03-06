@@ -84,7 +84,7 @@ func (i *impl) QueryRow(query string, args []any, dest ...any) error {
 	row := i.db.QueryRow(query, args...)
 	if err := row.Scan(dest...); err != nil {
 		switch {
-		case errors.As(err, &sql.ErrNoRows):
+		case errors.Is(err, sql.ErrNoRows):
 			return NoRowsError{
 				Message: fmt.Sprintf("No row matched query '%s'", query),
 				Err:     err,
