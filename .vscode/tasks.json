@@ -35,7 +35,7 @@
 		{
 			"label": "Stop debug container",
 			"type": "shell",
-			"command": "cd backend && docker compose --profile debug down -v",
+			"command": "cd backend && docker compose --profile debug down",
 			"group": "test",
 			"problemMatcher": []
 		},
