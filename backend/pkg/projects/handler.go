@@ -63,6 +63,7 @@ func (h *handlerImpl) StartProject(name string) error {
 	}
 
 	return h.repository.StartProject(name)
+
 }
 
 func (h *handlerImpl) StopProject(name string) error {

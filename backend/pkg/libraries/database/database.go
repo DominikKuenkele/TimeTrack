@@ -17,7 +17,9 @@ type Config struct {
 }
 
 type Database interface {
+	Begin() (*sql.Tx, error)
 	Exec(query string, args ...any) (sql.Result, error)
+	ExecWithTx(tx *sql.Tx, query string, args ...any) (sql.Result, error)
 	Query(query string, args ...any) (*sql.Rows, error)
 	QueryRow(query string, args []any, dest ...any) error
 	Close()
@@ -60,8 +62,12 @@ func NewDatabase(logger logger.Logger, config Config) (Database, error) {
 	}, nil
 }
 
+func (i *impl) Begin() (*sql.Tx, error) {
+	return i.db.Begin()
+}
+
 func (i *impl) Exec(query string, args ...any) (sql.Result, error) {
-	i.logger.Debug("Exec '%s' with args", query, args)
+	i.logger.Debug("Exec '%s' with args %s", query, args)
 
 	res, err := i.db.Exec(query, args...)
 	err = selectPqError(err)
@@ -69,8 +75,17 @@ func (i *impl) Exec(query string, args ...any) (sql.Result, error) {
 	return res, err
 }
 
+func (i *impl) ExecWithTx(tx *sql.Tx, query string, args ...any) (sql.Result, error) {
+	i.logger.Debug("ExecWithTx '%s' with args %s", query, args)
+
+	res, err := tx.Exec(query, args...)
+	err = selectPqError(err)
+
+	return res, err
+}
+
 func (i *impl) Query(query string, args ...any) (*sql.Rows, error) {
-	i.logger.Debug("Query '%s' with args", query, args)
+	i.logger.Debug("Query '%s' with args %s", query, args)
 
 	res, err := i.db.Query(query, args...)
 	if err != nil {
@@ -82,7 +97,7 @@ func (i *impl) Query(query string, args ...any) (*sql.Rows, error) {
 }
 
 func (i *impl) QueryRow(query string, args []any, dest ...any) error {
-	i.logger.Debug("Query row '%s' with args", query, args)
+	i.logger.Debug("Query row '%s' with args %s", query, args)
 
 	row := i.db.QueryRow(query, args...)
 	if err := row.Scan(dest...); err != nil {

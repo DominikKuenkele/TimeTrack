@@ -1,18 +1,19 @@
 package projects
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/database"
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
-	"github.com/DominikKuenkele/TimeTrack/projects/status"
 )
 
 type Repository interface {
 	AddProject(name string) error
 	GetProject(name string) (*Project, error)
+	GetRunningProject() (*Project, error)
 	GetAllProjects() ([]*Project, error)
 	DeleteProject(name string) error
 	StartProject(name string) error
@@ -41,20 +42,19 @@ const (
 	tableProjects           = "projects"
 	columnProjectsID        = "id"
 	columnProjectsName      = "name"
-	columnProjectsStatus    = "status"
 	columnProjectsStartedAt = "started_at"
+	columnProjectsCreatedAt = "created_at"
 	columnProjectsRuntime   = "runtime"
 )
 
 func (r *repositoryImpl) AddProject(name string) error {
 	_, err := r.database.Exec("INSERT INTO "+tableProjects+" ("+columnProjectsName+") VALUES ($1);", name)
 	if err != nil {
-		r.logger.Error("Couldn't add project: %+v", err)
 		switch {
 		case errors.As(err, &database.DuplicateError{}):
 			return fmt.Errorf("project '%s' already exists", name)
 		default:
-			return fmt.Errorf("database error")
+			return r.logAndAbstractError("Couldn't add project: %+v", err)
 		}
 	}
 
@@ -63,22 +63,27 @@ func (r *repositoryImpl) AddProject(name string) error {
 
 func (r *repositoryImpl) GetAllProjects() ([]*Project, error) {
 	res, err := r.database.Query(
-		"SELECT " + columnProjectsID + ", " + columnProjectsName + ", " + columnProjectsStatus +
-			", " + columnProjectsStartedAt + "::timestamptz AT TIME ZONE 'UTC', " + columnProjectsRuntime +
-			" FROM " + tableProjects + ";",
+		"SELECT " + columnProjectsID + ", " + columnProjectsName + ", " + columnProjectsStartedAt + ", " + columnProjectsRuntime + ", " + columnProjectsCreatedAt +
+			" FROM " + tableProjects +
+			" ORDER BY " + columnProjectsStartedAt + ", " + columnProjectsCreatedAt + " DESC;",
 	)
 	if err != nil {
-		return nil, fmt.Errorf("database error")
+		return nil, r.logAndAbstractError("Error getting all projects: %+v", err)
 	}
 
 	projects := []*Project{}
 	for res.Next() {
 		project := &Project{}
-		if err := res.Scan(&project.ID, &project.Name, &project.Status, &project.StartedAt, &project.RuntimeInMinutes); err != nil {
-			r.logger.Error("Error scanning project: %+v", err)
-			return nil, fmt.Errorf("database error")
+		if err := res.Scan(&project.ID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt); err != nil {
+			return nil, r.logAndAbstractError("Error scanning project: %+v", err)
 		}
 		projects = append(projects, project)
+	}
+
+	for _, project := range projects {
+		if project.StartedAt != nil {
+			*project.StartedAt = project.StartedAt.Local()
+		}
 	}
 
 	return projects, nil
@@ -87,19 +92,42 @@ func (r *repositoryImpl) GetAllProjects() ([]*Project, error) {
 func (r *repositoryImpl) GetProject(name string) (*Project, error) {
 	var project = &Project{}
 	if err := r.database.QueryRow(
-		"SELECT "+columnProjectsID+", "+columnProjectsName+", "+columnProjectsStatus+
-			", "+columnProjectsStartedAt+", "+columnProjectsRuntime+
+		"SELECT "+columnProjectsID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsRuntime+", "+columnProjectsCreatedAt+
 			" FROM "+tableProjects+
 			" WHERE "+tableProjects+"."+columnProjectsName+"=$1;",
 		[]any{name},
-		&project.ID, &project.Name, &project.Status, &project.StartedAt, &project.RuntimeInMinutes,
+		&project.ID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt,
 	); err != nil {
-		r.logger.Error("Error scanning project: %+v", err)
 		switch {
 		case errors.As(err, &database.NoRowsError{}):
 			return nil, fmt.Errorf("project '%s' not found", name)
 		default:
-			return nil, fmt.Errorf("database error")
+			return nil, r.logAndAbstractError("Error scanning project: %+v", err)
+		}
+	}
+
+	if project.StartedAt != nil {
+		*project.StartedAt = project.StartedAt.Local()
+	}
+
+	return project, nil
+}
+
+func (r *repositoryImpl) GetRunningProject() (*Project, error) {
+	var project = &Project{}
+	if err := r.database.QueryRow(
+		"SELECT "+columnProjectsID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsRuntime+", "+columnProjectsCreatedAt+
+			" FROM "+tableProjects+
+			" WHERE "+tableProjects+"."+columnProjectsStartedAt+" IS NOT NULL"+
+			" LIMIT 1;",
+		[]any{},
+		&project.ID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt,
+	); err != nil {
+		switch {
+		case errors.As(err, &database.NoRowsError{}):
+			return nil, nil
+		default:
+			return nil, r.logAndAbstractError("Error scanning project: %+v", err)
 		}
 	}
 
@@ -113,9 +141,7 @@ func (r *repositoryImpl) GetProject(name string) (*Project, error) {
 func (r *repositoryImpl) DeleteProject(name string) error {
 	res, err := r.database.Exec("DELETE FROM "+tableProjects+" WHERE "+columnProjectsName+"=$1;", name)
 	if err != nil {
-		r.logger.Error("Couldn't delete project: %+v", err)
-
-		return fmt.Errorf("database error")
+		return r.logAndAbstractError("Couldn't delete project: %+v", err)
 	}
 
 	if rows, _ := res.RowsAffected(); rows != 1 {
@@ -135,44 +161,85 @@ func (r *repositoryImpl) StartProject(name string) error {
 		return err
 	}
 
-	if project.Status == status.Started {
+	if project.StartedAt != nil {
 		return fmt.Errorf("project already started")
 	}
 
-	if _, err := r.database.Exec(
-		"UPDATE "+tableProjects+
-			" SET "+columnProjectsStatus+"=$1, "+columnProjectsStartedAt+"=NOW()"+
-			" WHERE "+columnProjectsName+"=$2;",
-		status.Started, name,
-	); err != nil {
-		r.logger.Error("Couldn't start project '%s': %+v", name, err)
-		return fmt.Errorf("database error")
+	runningProject, err := r.GetRunningProject()
+	if err != nil {
+		return err
 	}
+
+	tx, err := r.database.Begin()
+	if err != nil {
+		return r.logAndAbstractError("Couldn't create transaction: %+v", err)
+	}
+	defer func() {
+		if tx != nil {
+			r.logger.Info("Rolling back transaction while starting project")
+			if err := tx.Rollback(); err != nil {
+				r.logger.Error("Failed to rollback transaction: %+v", err)
+			}
+		}
+	}()
+
+	if _, err := r.database.ExecWithTx(
+		tx,
+		"UPDATE "+tableProjects+
+			" SET "+columnProjectsStartedAt+"=NOW()"+
+			" WHERE "+columnProjectsName+"=$1;",
+		name,
+	); err != nil {
+		return r.logAndAbstractError("Couldn't start project '%s': %+v", name, err)
+	}
+
+	if runningProject != nil {
+		err = r.stopProjectWithTx(tx, runningProject.Name)
+		if err != nil {
+			return err
+		}
+	}
+
+	tx.Commit()
+	tx = nil
 
 	return nil
 }
 
 func (r *repositoryImpl) StopProject(name string) error {
+	return r.stopProjectWithTx(nil, name)
+}
+
+func (r *repositoryImpl) stopProjectWithTx(tx *sql.Tx, name string) error {
 	project, err := r.GetProject(name)
 	if err != nil {
-		return err
+		return r.logAndAbstractError("Failed to fetch project '%s': %+v", name, err)
 	}
 
-	if project.Status != status.Started || project.StartedAt == nil {
+	if project.StartedAt == nil {
 		return fmt.Errorf("project not running")
 	}
 
-	runtime := project.RuntimeInMinutes + uint64(time.Now().Sub(*project.StartedAt).Minutes())
-	if _, err := r.database.Exec(
-		"UPDATE "+tableProjects+
-			" SET "+columnProjectsStatus+"=$1, "+columnProjectsRuntime+"=$2"+
-			" WHERE "+columnProjectsName+"=$3;",
-		status.Stopped, runtime, name,
-	); err != nil {
-		r.logger.Error("Couldn't stop project '%s': %+v", name, err)
+	runtime := project.RuntimeInSeconds + uint64(time.Now().Sub(*project.StartedAt).Seconds())
+	query := "UPDATE " + tableProjects +
+		" SET " + columnProjectsRuntime + "=$1, " + columnProjectsStartedAt + "=NULL" +
+		" WHERE " + columnProjectsName + "=$2;"
+	args := []any{runtime, name}
 
-		return fmt.Errorf("database error")
+	if tx == nil {
+		_, err = r.database.Exec(query, args...)
+	} else {
+		_, err = r.database.ExecWithTx(tx, query, args...)
+	}
+	if err != nil {
+		return r.logAndAbstractError("Couldn't stop project '%s': %+v", name, err)
 	}
 
 	return nil
+}
+
+func (r *repositoryImpl) logAndAbstractError(message string, args ...any) error {
+	r.logger.Error(message, args...)
+
+	return fmt.Errorf("database error")
 }
