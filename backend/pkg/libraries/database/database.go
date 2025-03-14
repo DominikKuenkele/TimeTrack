@@ -73,7 +73,10 @@ func (i *impl) Query(query string, args ...any) (*sql.Rows, error) {
 	i.logger.Debug("Query '%s' with args", query, args)
 
 	res, err := i.db.Query(query, args...)
-	err = selectPqError(err)
+	if err != nil {
+		i.logger.Error("Error querying: %+v", err)
+		err = selectPqError(err)
+	}
 
 	return res, err
 }
@@ -83,6 +86,7 @@ func (i *impl) QueryRow(query string, args []any, dest ...any) error {
 
 	row := i.db.QueryRow(query, args...)
 	if err := row.Scan(dest...); err != nil {
+		i.logger.Error("Error scanning row: %+v", err)
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
 			return NoRowsError{

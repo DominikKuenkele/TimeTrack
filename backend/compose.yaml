@@ -13,6 +13,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     profiles: ["prod"]
 
   debug:
@@ -30,6 +33,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     profiles: ["debug"]
 
   db:
@@ -38,6 +44,8 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
+      - TZ=UTC
+      - PGTZ=UTC
     ports:
       - "5432:5432"
     volumes:
@@ -47,7 +55,6 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 2s
       retries: 5
-      start_period: 5s
 
 volumes:
   postgres_data:

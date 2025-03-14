@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
@@ -35,9 +34,9 @@ type actionFunc func(w http.ResponseWriter, r *http.Request, name string) error
 
 func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 	actionMap := map[string]actionFunc{
-		"":              a.handleNoAction,
-		"startTracking": a.handleStartTrackingAction,
-		"stopTracking":  a.handleStopTrackingAction,
+		"":      a.handleNoAction,
+		"start": a.handleStartProjectAction,
+		"stop":  a.handleStopProjectAction,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -92,18 +91,25 @@ func (a *apiImpl) sendInvalidInputResponse(w http.ResponseWriter, err error) {
 func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name string) error {
 	switch r.Method {
 	case http.MethodGet:
-		project, err := a.projectHandler.Get(name)
-		if err != nil {
-			return err
-		}
+		if name == "" {
+			projects, err := a.projectHandler.GetAll()
+			if err != nil {
+				return err
+			}
 
-		w.WriteHeader(http.StatusOK)
-		jsonResponse, _ := json.Marshal(
-			map[string]string{
-				"id":   strconv.Itoa(int(project.ID)),
-				"name": project.Name,
-			})
-		w.Write(jsonResponse)
+			w.WriteHeader(http.StatusOK)
+			jsonResponse, _ := json.Marshal(projects)
+			w.Write(jsonResponse)
+		} else {
+			project, err := a.projectHandler.Get(name)
+			if err != nil {
+				return err
+			}
+
+			w.WriteHeader(http.StatusOK)
+			jsonResponse, _ := json.Marshal(project)
+			w.Write(jsonResponse)
+		}
 	case http.MethodPost:
 		if err := a.projectHandler.Add(name); err != nil {
 			return err
@@ -123,10 +129,10 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name st
 	return nil
 }
 
-func (a *apiImpl) handleStartTrackingAction(w http.ResponseWriter, r *http.Request, name string) error {
+func (a *apiImpl) handleStartProjectAction(w http.ResponseWriter, r *http.Request, name string) error {
 	switch r.Method {
 	case http.MethodPost:
-		if err := a.projectHandler.StartTracking(name); err != nil {
+		if err := a.projectHandler.StartProject(name); err != nil {
 			return err
 		}
 
@@ -138,10 +144,10 @@ func (a *apiImpl) handleStartTrackingAction(w http.ResponseWriter, r *http.Reque
 	return nil
 }
 
-func (a *apiImpl) handleStopTrackingAction(w http.ResponseWriter, r *http.Request, name string) error {
+func (a *apiImpl) handleStopProjectAction(w http.ResponseWriter, r *http.Request, name string) error {
 	switch r.Method {
 	case http.MethodPost:
-		if err := a.projectHandler.StopTracking(name); err != nil {
+		if err := a.projectHandler.StopProject(name); err != nil {
 			return err
 		}
 

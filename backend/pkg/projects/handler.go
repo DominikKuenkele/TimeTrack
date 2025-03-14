@@ -9,9 +9,10 @@ import (
 type Handler interface {
 	Add(name string) error
 	Get(name string) (*Project, error)
+	GetAll() ([]*Project, error)
 	Delete(name string) error
-	StartTracking(name string) error
-	StopTracking(name string) error
+	StartProject(name string) error
+	StopProject(name string) error
 }
 
 type handlerImpl struct {
@@ -44,36 +45,30 @@ func (h *handlerImpl) Delete(name string) error {
 	return h.repository.DeleteProject(name)
 }
 
+func (h *handlerImpl) GetAll() ([]*Project, error) {
+	return h.repository.GetAllProjects()
+}
+
 func (h *handlerImpl) Get(name string) (*Project, error) {
 	if name == "" {
-		return &Project{}, errors.New("name must not be empty")
+		return nil, errors.New("name must not be empty")
 	}
 
 	return h.repository.GetProject(name)
 }
 
-func (h *handlerImpl) StartTracking(name string) error {
+func (h *handlerImpl) StartProject(name string) error {
 	if name == "" {
 		return errors.New("name must not be empty")
 	}
 
-	project, err := h.Get(name)
-	if err != nil {
-		return err
-	}
-
-	return h.repository.StartTracking(project.ID)
+	return h.repository.StartProject(name)
 }
 
-func (h *handlerImpl) StopTracking(name string) error {
+func (h *handlerImpl) StopProject(name string) error {
 	if name == "" {
 		return errors.New("name must not be empty")
 	}
 
-	project, err := h.Get(name)
-	if err != nil {
-		return err
-	}
-
-	return h.repository.StopTracking(project.ID)
+	return h.repository.StopProject(name)
 }

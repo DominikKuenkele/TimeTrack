@@ -7,14 +7,16 @@ import (
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/database"
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
+	"github.com/DominikKuenkele/TimeTrack/projects/status"
 )
 
 type Repository interface {
 	AddProject(name string) error
 	GetProject(name string) (*Project, error)
+	GetAllProjects() ([]*Project, error)
 	DeleteProject(name string) error
-	StartTracking(projectID int32) error
-	StopTracking(projectID int32) error
+	StartProject(name string) error
+	StopProject(name string) error
 }
 
 type repositoryImpl struct {
@@ -36,15 +38,12 @@ func NewRepository(logger logger.Logger, database database.Database) (Repository
 }
 
 const (
-	tableProjects      = "projects"
-	columnProjectsID   = "id"
-	columnProjectsName = "name"
-
-	tableTracking           = "tracking"
-	columnTrackingID        = "id"
-	columnTrackingProject   = "project_id"
-	columnTrackingStartTime = "start_time"
-	columnTrackingEndTime   = "end_time"
+	tableProjects           = "projects"
+	columnProjectsID        = "id"
+	columnProjectsName      = "name"
+	columnProjectsStatus    = "status"
+	columnProjectsStartedAt = "started_at"
+	columnProjectsRuntime   = "runtime"
 )
 
 func (r *repositoryImpl) AddProject(name string) error {
@@ -62,21 +61,50 @@ func (r *repositoryImpl) AddProject(name string) error {
 	return nil
 }
 
+func (r *repositoryImpl) GetAllProjects() ([]*Project, error) {
+	res, err := r.database.Query(
+		"SELECT " + columnProjectsID + ", " + columnProjectsName + ", " + columnProjectsStatus +
+			", " + columnProjectsStartedAt + "::timestamptz AT TIME ZONE 'UTC', " + columnProjectsRuntime +
+			" FROM " + tableProjects + ";",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("database error")
+	}
+
+	projects := []*Project{}
+	for res.Next() {
+		project := &Project{}
+		if err := res.Scan(&project.ID, &project.Name, &project.Status, &project.StartedAt, &project.RuntimeInMinutes); err != nil {
+			r.logger.Error("Error scanning project: %+v", err)
+			return nil, fmt.Errorf("database error")
+		}
+		projects = append(projects, project)
+	}
+
+	return projects, nil
+}
+
 func (r *repositoryImpl) GetProject(name string) (*Project, error) {
 	var project = &Project{}
 	if err := r.database.QueryRow(
-		"SELECT "+columnProjectsID+", "+columnProjectsName+" FROM "+tableProjects+" WHERE "+columnProjectsName+"=$1;",
+		"SELECT "+columnProjectsID+", "+columnProjectsName+", "+columnProjectsStatus+
+			", "+columnProjectsStartedAt+", "+columnProjectsRuntime+
+			" FROM "+tableProjects+
+			" WHERE "+tableProjects+"."+columnProjectsName+"=$1;",
 		[]any{name},
-		&project.ID, &project.Name,
+		&project.ID, &project.Name, &project.Status, &project.StartedAt, &project.RuntimeInMinutes,
 	); err != nil {
-		r.logger.Error("Couldn't get project: %+v", err)
+		r.logger.Error("Error scanning project: %+v", err)
 		switch {
 		case errors.As(err, &database.NoRowsError{}):
-			return &Project{}, fmt.Errorf("project '%s' not found", name)
+			return nil, fmt.Errorf("project '%s' not found", name)
 		default:
-			return &Project{}, fmt.Errorf("database error")
+			return nil, fmt.Errorf("database error")
 		}
+	}
 
+	if project.StartedAt != nil {
+		*project.StartedAt = project.StartedAt.Local()
 	}
 
 	return project, nil
@@ -101,69 +129,50 @@ func (r *repositoryImpl) DeleteProject(name string) error {
 	return nil
 }
 
-func (r *repositoryImpl) StartTracking(projectID int32) error {
-	tracking, err := r.getRunningTracking(projectID)
+func (r *repositoryImpl) StartProject(name string) error {
+	project, err := r.GetProject(name)
 	if err != nil {
 		return err
 	}
 
-	if tracking.ID != 0 {
-		return fmt.Errorf("timer already running")
+	if project.Status == status.Started {
+		return fmt.Errorf("project already started")
 	}
 
 	if _, err := r.database.Exec(
-		"INSERT INTO "+tableTracking+"("+columnTrackingProject+", "+columnTrackingStartTime+") VALUES($1, $2);",
-		projectID, time.Now(),
+		"UPDATE "+tableProjects+
+			" SET "+columnProjectsStatus+"=$1, "+columnProjectsStartedAt+"=NOW()"+
+			" WHERE "+columnProjectsName+"=$2;",
+		status.Started, name,
 	); err != nil {
-		r.logger.Error("Couldn't start timer for project '%s': %+v", projectID, err)
-
+		r.logger.Error("Couldn't start project '%s': %+v", name, err)
 		return fmt.Errorf("database error")
 	}
 
 	return nil
 }
 
-func (r *repositoryImpl) StopTracking(projectID int32) error {
-	tracking, err := r.getRunningTracking(projectID)
+func (r *repositoryImpl) StopProject(name string) error {
+	project, err := r.GetProject(name)
 	if err != nil {
 		return err
 	}
 
-	if tracking.ID == 0 {
-		return fmt.Errorf("timer not running")
+	if project.Status != status.Started || project.StartedAt == nil {
+		return fmt.Errorf("project not running")
 	}
 
+	runtime := project.RuntimeInMinutes + uint64(time.Now().Sub(*project.StartedAt).Minutes())
 	if _, err := r.database.Exec(
-		"UPDATE "+tableTracking+" SET "+columnTrackingEndTime+"=$1 WHERE "+columnTrackingID+"=$2;",
-		time.Now(), tracking.ID,
+		"UPDATE "+tableProjects+
+			" SET "+columnProjectsStatus+"=$1, "+columnProjectsRuntime+"=$2"+
+			" WHERE "+columnProjectsName+"=$3;",
+		status.Stopped, runtime, name,
 	); err != nil {
-		r.logger.Error("Couldn't stop timer for project '%s': %+v", projectID, err)
+		r.logger.Error("Couldn't stop project '%s': %+v", name, err)
 
 		return fmt.Errorf("database error")
 	}
 
 	return nil
-}
-
-func (r *repositoryImpl) getRunningTracking(projectID int32) (*Tracking, error) {
-	var tracking = &Tracking{}
-	if err := r.database.QueryRow(
-		"SELECT "+columnTrackingID+
-			" FROM "+tableTracking+
-			" WHERE "+columnTrackingProject+"=$1"+
-			" AND "+columnTrackingStartTime+" IS NOT NULL"+
-			" AND "+columnTrackingEndTime+" IS NULL",
-		[]any{projectID},
-		&tracking.ID,
-	); err != nil {
-		r.logger.Error("Couldn't get running tracking: %+v", err)
-		switch {
-		case errors.As(err, &database.NoRowsError{}):
-			return &Tracking{}, nil
-		default:
-			return nil, fmt.Errorf("database error")
-		}
-	}
-
-	return tracking, nil
 }

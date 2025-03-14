@@ -1,14 +1,15 @@
 package projects
 
-import "time"
+import (
+	"time"
+
+	"github.com/DominikKuenkele/TimeTrack/projects/status"
+)
 
 type Project struct {
-	ID   int32
-	Name string
-}
-
-type Tracking struct {
-	ID        int32
-	StartTime time.Time
-	EndTime   time.Time
+	ID               int32
+	Name             string
+	Status           status.Status
+	RuntimeInMinutes uint64
+	StartedAt        *time.Time
 }
