@@ -74,7 +74,7 @@ docker compose --profile debug up --build
 
 ## Project Structure
 
-```
+```txt
 TimeTrack/
 ├── frontend/                   
 │   ├── public/                 # Static files
