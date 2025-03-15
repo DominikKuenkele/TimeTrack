@@ -61,6 +61,7 @@ docker buildx build --target builder .
 
 # Run service in debug mode
 docker compose --profile debug up --build
+```
 
 ## Usage
 
@@ -74,7 +75,7 @@ docker compose --profile debug up --build
 
 ## Project Structure
 
-```txt
+```
 TimeTrack/
 ├── frontend/                   
 │   ├── public/                 # Static files
