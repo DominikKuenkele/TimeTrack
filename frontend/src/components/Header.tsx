@@ -9,13 +9,6 @@ const Header: React.FC = () => {
                 <h1 className="logo">
                     <Link to="/">TimeTrack</Link>
                 </h1>
-                <nav className="nav">
-                    <ul>
-                        <li>
-                            <Link to="/">Projects</Link>
-                        </li>
-                    </ul>
-                </nav>
             </div>
         </header>
     );

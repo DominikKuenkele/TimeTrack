@@ -26,6 +26,23 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
             await projectService.startProject(project.Name);
             onProjectUpdated();
             setError(null);
+
+            const scrollDuration = 300;
+            const scrollStep = -window.scrollY / (scrollDuration / 15);
+
+            const scrollInterval = setInterval(() => {
+                if (window.scrollY !== 0) {
+                    window.scrollBy(0, scrollStep);
+                } else {
+                    clearInterval(scrollInterval);
+                }
+            }, 15);
+
+            setTimeout(() => {
+                clearInterval(scrollInterval);
+                window.scrollTo(0, 0);
+            }, scrollDuration);
+
         } catch (err: unknown) {
             const errorMessage = extractErrorMessage(
                 err,

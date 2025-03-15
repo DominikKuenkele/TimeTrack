@@ -9,19 +9,23 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    max-width: 1200px;
+    max-width: 1180px;
     margin: 0 auto;
     padding: 0 20px;
+    box-sizing: border-box;
+    width: 100%;
 }
 
 .logo {
     margin: 0;
     font-size: 1.8rem;
+    text-align: left;
 }
 
 .logo a {
     color: white;
     text-decoration: none;
+    display: inline-block;
 }
 
 .nav ul {
