@@ -2,6 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 import { Project } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL;
+const NODE_ENV = import.meta.env.VITE_NODE_ENV;
 
 const api: AxiosInstance = axios.create({
     baseURL: API_URL,
@@ -11,7 +12,7 @@ const api: AxiosInstance = axios.create({
 });
 
 const logErrorIfNeeded = (error: any) => {
-    if (process.env.NODE_ENV !== 'production') {
+    if (NODE_ENV !== 'production') {
         console.log('API Error Response:', error.response?.data);
     }
     throw error; // Re-throw the error to be caught by the component
