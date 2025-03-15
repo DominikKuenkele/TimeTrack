@@ -43,8 +43,9 @@ const (
 	columnProjectsID        = "id"
 	columnProjectsName      = "name"
 	columnProjectsStartedAt = "started_at"
-	columnProjectsCreatedAt = "created_at"
 	columnProjectsRuntime   = "runtime"
+	columnProjectsCreatedAt = "created_at"
+	columnProjectsUpdatedAt = "updated_at"
 )
 
 func (r *repositoryImpl) AddProject(name string) error {
@@ -63,9 +64,9 @@ func (r *repositoryImpl) AddProject(name string) error {
 
 func (r *repositoryImpl) GetAllProjects() ([]*Project, error) {
 	res, err := r.database.Query(
-		"SELECT " + columnProjectsID + ", " + columnProjectsName + ", " + columnProjectsStartedAt + ", " + columnProjectsRuntime + ", " + columnProjectsCreatedAt +
+		"SELECT " + columnProjectsID + ", " + columnProjectsName + ", " + columnProjectsStartedAt + ", " + columnProjectsRuntime + ", " + columnProjectsCreatedAt + ", " + columnProjectsUpdatedAt +
 			" FROM " + tableProjects +
-			" ORDER BY " + columnProjectsStartedAt + ", " + columnProjectsCreatedAt + " DESC;",
+			" ORDER BY " + columnProjectsStartedAt + ", " + columnProjectsUpdatedAt + " DESC;",
 	)
 	if err != nil {
 		return nil, r.logAndAbstractError("Error getting all projects: %+v", err)
@@ -74,7 +75,7 @@ func (r *repositoryImpl) GetAllProjects() ([]*Project, error) {
 	projects := []*Project{}
 	for res.Next() {
 		project := &Project{}
-		if err := res.Scan(&project.ID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt); err != nil {
+		if err := res.Scan(&project.ID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt, &project.UpdatedAt); err != nil {
 			return nil, r.logAndAbstractError("Error scanning project: %+v", err)
 		}
 		projects = append(projects, project)
@@ -84,6 +85,12 @@ func (r *repositoryImpl) GetAllProjects() ([]*Project, error) {
 		if project.StartedAt != nil {
 			*project.StartedAt = project.StartedAt.Local()
 		}
+		if project.CreatedAt != nil {
+			*project.CreatedAt = project.CreatedAt.Local()
+		}
+		if project.UpdatedAt != nil {
+			*project.UpdatedAt = project.UpdatedAt.Local()
+		}
 	}
 
 	return projects, nil
@@ -92,11 +99,11 @@ func (r *repositoryImpl) GetAllProjects() ([]*Project, error) {
 func (r *repositoryImpl) GetProject(name string) (*Project, error) {
 	var project = &Project{}
 	if err := r.database.QueryRow(
-		"SELECT "+columnProjectsID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsRuntime+", "+columnProjectsCreatedAt+
+		"SELECT "+columnProjectsID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsRuntime+", "+columnProjectsCreatedAt+", "+columnProjectsUpdatedAt+
 			" FROM "+tableProjects+
 			" WHERE "+tableProjects+"."+columnProjectsName+"=$1;",
 		[]any{name},
-		&project.ID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt,
+		&project.ID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt, &project.UpdatedAt,
 	); err != nil {
 		switch {
 		case errors.As(err, &database.NoRowsError{}):
@@ -109,6 +116,12 @@ func (r *repositoryImpl) GetProject(name string) (*Project, error) {
 	if project.StartedAt != nil {
 		*project.StartedAt = project.StartedAt.Local()
 	}
+	if project.CreatedAt != nil {
+		*project.CreatedAt = project.CreatedAt.Local()
+	}
+	if project.UpdatedAt != nil {
+		*project.UpdatedAt = project.UpdatedAt.Local()
+	}
 
 	return project, nil
 }
@@ -116,12 +129,12 @@ func (r *repositoryImpl) GetProject(name string) (*Project, error) {
 func (r *repositoryImpl) GetRunningProject() (*Project, error) {
 	var project = &Project{}
 	if err := r.database.QueryRow(
-		"SELECT "+columnProjectsID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsRuntime+", "+columnProjectsCreatedAt+
+		"SELECT "+columnProjectsID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsRuntime+", "+columnProjectsCreatedAt+", "+columnProjectsUpdatedAt+
 			" FROM "+tableProjects+
 			" WHERE "+tableProjects+"."+columnProjectsStartedAt+" IS NOT NULL"+
 			" LIMIT 1;",
 		[]any{},
-		&project.ID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt,
+		&project.ID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt, &project.UpdatedAt,
 	); err != nil {
 		switch {
 		case errors.As(err, &database.NoRowsError{}):
@@ -133,6 +146,12 @@ func (r *repositoryImpl) GetRunningProject() (*Project, error) {
 
 	if project.StartedAt != nil {
 		*project.StartedAt = project.StartedAt.Local()
+	}
+	if project.CreatedAt != nil {
+		*project.CreatedAt = project.CreatedAt.Local()
+	}
+	if project.UpdatedAt != nil {
+		*project.UpdatedAt = project.UpdatedAt.Local()
 	}
 
 	return project, nil
@@ -220,7 +239,7 @@ func (r *repositoryImpl) stopProjectWithTx(tx *sql.Tx, name string) error {
 		return fmt.Errorf("project not running")
 	}
 
-	runtime := project.RuntimeInSeconds + uint64(time.Now().Sub(*project.StartedAt).Seconds())
+	runtime := project.RuntimeInSeconds + uint64(time.Since(*project.StartedAt).Seconds())
 	query := "UPDATE " + tableProjects +
 		" SET " + columnProjectsRuntime + "=$1, " + columnProjectsStartedAt + "=NULL" +
 		" WHERE " + columnProjectsName + "=$2;"

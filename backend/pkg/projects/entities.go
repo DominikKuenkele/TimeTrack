@@ -10,4 +10,5 @@ type Project struct {
 	RuntimeInSeconds uint64
 	StartedAt        *time.Time
 	CreatedAt        *time.Time
+	UpdatedAt        *time.Time
 }

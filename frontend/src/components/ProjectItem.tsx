@@ -99,10 +99,10 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
             <div className="project-info">
                 <h3>{project.Name}</h3>
                 <div className="project-runtime">
-                    Total Runtime: {formatRuntime(project.RuntimeInSeconds)}
+                    <strong>Total Runtime:</strong> {formatRuntime(project.RuntimeInSeconds)}
                 </div>
                 <div className="project-status">
-                    Status: <span className={isProjectActive() ? 'active' : 'inactive'}>
+                    <strong>Status:</strong> <span className={isProjectActive() ? 'active' : 'inactive'}>
                         {isProjectActive() ? 'Active' : 'Inactive'}
                     </span>
                 </div>
