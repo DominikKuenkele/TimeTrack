@@ -10,13 +10,20 @@ const api: AxiosInstance = axios.create({
     },
 });
 
+const logErrorIfNeeded = (error: any) => {
+    if (process.env.NODE_ENV !== 'production') {
+        console.log('API Error Response:', error.response?.data);
+    }
+    throw error; // Re-throw the error to be caught by the component
+};
+
 export const projectService = {
     getAllProjects: async (): Promise<Project[]> => {
         try {
             const response = await api.get<Project[]>('/projects');
             return response.data;
         } catch (error) {
-            console.error('Error fetching projects:', error);
+            logErrorIfNeeded(error);
             throw error;
         }
     },
@@ -27,7 +34,7 @@ export const projectService = {
             const response = await api.post<Project>(`/projects/${encodedName}`);
             return response.data;
         } catch (error) {
-            console.error(`Error creating project ${projectName}:`, error);
+            logErrorIfNeeded(error);
             throw error;
         }
     },
@@ -37,7 +44,7 @@ export const projectService = {
             const encodedName = encodeURIComponent(projectName);
             await api.delete(`/projects/${encodedName}`);
         } catch (error) {
-            console.error(`Error deleting project ${projectName}:`, error);
+            logErrorIfNeeded(error);
             throw error;
         }
     },
@@ -48,7 +55,7 @@ export const projectService = {
             const response = await api.post<Project>(`/projects/${encodedName}/start`);
             return response.data;
         } catch (error) {
-            console.error(`Error starting project ${projectName}:`, error);
+            logErrorIfNeeded(error);
             throw error;
         }
     },
@@ -59,7 +66,7 @@ export const projectService = {
             const response = await api.post<Project>(`/projects/${encodedName}/stop`);
             return response.data;
         } catch (error) {
-            console.error(`Error stopping project ${projectName}:`, error);
+            logErrorIfNeeded(error);
             throw error;
         }
     },

@@ -1,155 +1,165 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { projectService } from '../services/api';
 import { Project } from '../types';
+import { extractErrorMessage } from '../utils/errorUtils';
+import CreateProjectForm from './CreateProjectForm';
+import ProjectItem from './ProjectItem';
 import './ProjectList.css';
 
-// Timer component to show real-time duration
-const ProjectTimer: React.FC<{ startedAt: string; runtimeSeconds: number }> = ({ startedAt, runtimeSeconds }) => {
-    const [elapsedTime, setElapsedTime] = useState<number>(0);
+const getPositions = (container: HTMLElement | null): Record<string, DOMRect> => {
+    if (!container) return {};
 
-    useEffect(() => {
-        // Calculate initial elapsed time
-        const startTime = new Date(startedAt).getTime();
-        const initialElapsed = Math.floor((Date.now() - startTime) / 1000) + runtimeSeconds;
-        setElapsedTime(initialElapsed);
+    const positions: Record<string, DOMRect> = {};
+    const projectElements = container.querySelectorAll('.project-item');
 
-        // Update timer every second
-        const timer = setInterval(() => {
-            setElapsedTime(prev => prev + 1);
-        }, 1000);
+    projectElements.forEach((el) => {
+        const id = el.getAttribute('data-id');
+        if (id) {
+            positions[id] = el.getBoundingClientRect();
+        }
+    });
 
-        // Clean up interval on unmount
-        return () => clearInterval(timer);
-    }, [startedAt, runtimeSeconds]);
-
-    // Format time as HH:MM:SS
-    const formatTime = (totalSeconds: number): string => {
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-
-        return [
-            hours.toString().padStart(2, '0'),
-            minutes.toString().padStart(2, '0'),
-            seconds.toString().padStart(2, '0')
-        ].join(':');
-    };
-
-    return (
-        <div className="project-timer">
-            <span className="timer-icon">⏱️</span>
-            <span className="timer-value">{formatTime(elapsedTime)}</span>
-        </div>
-    );
+    return positions;
 };
 
 const ProjectList: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [newProjectName, setNewProjectName] = useState<string>('');
-    const [isCreating, setIsCreating] = useState<boolean>(false);
-    const [deleteConfirmation, setDeleteConfirmation] = useState<string | null>(null);
+    const [isAnimating, setIsAnimating] = useState<boolean>(false);
+    const [animatingItems, setAnimatingItems] = useState<Set<string>>(new Set());
 
-    // Fetch all projects on component mount
+    const [movingToTop, setMovingToTop] = useState<Set<string>>(new Set());
+    const [movingFromTop, setMovingFromTop] = useState<Set<string>>(new Set());
+
+    const previousFirstProjectRef = useRef<string | null>(null);
+
+    const projectListRef = useRef<HTMLUListElement>(null);
+    const previousPositions = useRef<Record<string, DOMRect>>({});
+
+    const hasActiveProject = projects.length > 0 && projects[0].StartedAt !== null;
+
     useEffect(() => {
         fetchProjects();
     }, []);
+
+    useEffect(() => {
+        if (!loading && projects.length > 0) {
+            const currentFirstProjectId = String(projects[0].ID);
+            if (!isAnimating) {
+                previousFirstProjectRef.current = currentFirstProjectId;
+            }
+        }
+    }, [projects, loading, isAnimating]);
+
+    useEffect(() => {
+        if (loading || !projectListRef.current) return;
+
+        const currentPositions = getPositions(projectListRef.current);
+        const previousPos = previousPositions.current;
+
+        if (Object.keys(previousPos).length) {
+            setIsAnimating(true);
+            const movingItems = new Set<string>();
+            const topMovers = new Set<string>();
+            const fromTopMovers = new Set<string>();
+
+            let currentFirstPositionId: string | null = null;
+            if (projects.length > 0) {
+                currentFirstPositionId = String(projects[0].ID);
+            }
+
+            const previousFirstPositionId = previousFirstProjectRef.current;
+
+            const projectElements = projectListRef.current.querySelectorAll('.project-item');
+
+            projectElements.forEach((el) => {
+                const id = el.getAttribute('data-id');
+                if (id && previousPos[id] && currentPositions[id]) {
+                    const deltaY = previousPos[id].top - currentPositions[id].top;
+
+                    if (Math.abs(deltaY) > 5) {
+                        el.classList.add('animating');
+                        movingItems.add(id);
+
+                        const htmlEl = el as HTMLElement;
+
+                        const isMovingUp = deltaY > 0;
+                        const isMovingToTop = id === currentFirstPositionId && isMovingUp;
+
+                        const wasAtTop = id === previousFirstPositionId && id !== currentFirstPositionId;
+
+                        if (isMovingToTop) {
+                            htmlEl.style.zIndex = '15';
+                            topMovers.add(id);
+                        } else if (wasAtTop) {
+                            htmlEl.style.zIndex = '10';
+                            fromTopMovers.add(id);
+                        } else {
+                            htmlEl.style.zIndex = isMovingUp ? '5' : '1';
+                        }
+
+                        htmlEl.style.transform = `translateY(${deltaY}px)`;
+                        htmlEl.style.transition = 'none';
+
+                        void htmlEl.offsetHeight;
+
+                        htmlEl.style.transform = '';
+                        htmlEl.style.transition = 'transform 0.5s ease-out';
+                    }
+                }
+            });
+
+            setAnimatingItems(movingItems);
+            setMovingToTop(topMovers);
+            setMovingFromTop(fromTopMovers);
+
+            const clearAnimation = setTimeout(() => {
+                projectElements.forEach(el => {
+                    el.classList.remove('animating');
+                    const htmlEl = el as HTMLElement;
+                    htmlEl.style.transform = '';
+                    htmlEl.style.zIndex = '';
+                });
+                setIsAnimating(false);
+                setAnimatingItems(new Set());
+                setMovingToTop(new Set());
+                setMovingFromTop(new Set());
+
+                if (currentFirstPositionId) {
+                    previousFirstProjectRef.current = currentFirstPositionId;
+                }
+            }, 300);
+
+            return () => clearTimeout(clearAnimation);
+        }
+
+        previousPositions.current = currentPositions;
+    }, [projects, loading]);
 
     const fetchProjects = async (showLoading = true): Promise<void> => {
         try {
             if (showLoading) {
                 setLoading(true);
             }
+            if (projectListRef.current && !showLoading) {
+                previousPositions.current = getPositions(projectListRef.current);
+            }
+
             const data = await projectService.getAllProjects();
             setProjects(data);
             setError(null);
-        } catch (err) {
-            setError('Failed to fetch projects. Please try again later.');
+        } catch (err: unknown) {
+            const errorMessage = extractErrorMessage(
+                err,
+                'Failed to fetch projects. Please try again later.'
+            );
+            setError(`Error: ${errorMessage}`);
             console.error(err);
         } finally {
             if (showLoading) {
                 setLoading(false);
             }
-        }
-    };
-
-    const handleStartProject = async (projectName: string): Promise<void> => {
-        try {
-            await projectService.startProject(projectName);
-            fetchProjects();
-        } catch (err) {
-            setError(`Failed to start project "${projectName}". Please try again.`);
-            console.error(err);
-        }
-    };
-
-    const handleStopProject = async (projectName: string): Promise<void> => {
-        try {
-            await projectService.stopProject(projectName);
-            fetchProjects();
-        } catch (err) {
-            setError(`Failed to stop project "${projectName}". Please try again.`);
-            console.error(err);
-        }
-    };
-
-    const handleCreateProject = async (e: React.FormEvent): Promise<void> => {
-        e.preventDefault();
-        if (!newProjectName.trim()) {
-            setError('Project name cannot be empty.');
-            return;
-        }
-
-        try {
-            setIsCreating(true);
-            await projectService.createProject(newProjectName);
-            setNewProjectName('');
-            fetchProjects();
-            setError(null);
-        } catch (err) {
-            setError(`Failed to create project "${newProjectName}". Please try again.`);
-            console.error(err);
-        } finally {
-            setIsCreating(false);
-        }
-    };
-
-    const handleDeleteProject = async (projectName: string): Promise<void> => {
-        try {
-            await projectService.deleteProject(projectName);
-            setDeleteConfirmation(null);
-            fetchProjects();
-        } catch (err) {
-            setError(`Failed to delete project "${projectName}". Please try again.`);
-            console.error(err);
-        }
-    };
-
-    const confirmDelete = (projectName: string): void => {
-        setDeleteConfirmation(projectName);
-    };
-
-    const cancelDelete = (): void => {
-        setDeleteConfirmation(null);
-    };
-
-    const isProjectActive = (project: Project): boolean => {
-        return project.StartedAt !== null;
-    };
-
-    // Format runtime in HH:MM:SS format from seconds
-    const formatRuntime = (totalSeconds: number): string => {
-        const hours = Math.floor(totalSeconds / 3600);
-        const minutes = Math.floor((totalSeconds % 3600) / 60);
-        const seconds = totalSeconds % 60;
-
-        if (hours > 0) {
-            return `${hours}h ${minutes}m ${seconds}s`;
-        } else if (minutes > 0) {
-            return `${minutes}m ${seconds}s`;
-        } else {
-            return `${seconds}s`;
         }
     };
 
@@ -161,106 +171,54 @@ const ProjectList: React.FC = () => {
         <div className="project-list-container">
             <h2>Projects</h2>
 
-            {/* Create Project Form */}
-            <div className="create-project-form">
-                <form onSubmit={handleCreateProject}>
-                    <input
-                        type="text"
-                        placeholder="New project name"
-                        value={newProjectName}
-                        onChange={(e) => setNewProjectName(e.target.value)}
-                        disabled={isCreating}
-                    />
-                    <button
-                        type="submit"
-                        className="create-button"
-                        disabled={isCreating || !newProjectName.trim()}
-                    >
-                        {isCreating ? 'Creating...' : 'Create Project'}
-                    </button>
-                </form>
-            </div>
+            <CreateProjectForm onProjectCreated={() => fetchProjects(false)} />
 
-            {/* Error Message */}
             {error && <div className="error">{error}</div>}
 
-            {/* Project List */}
             {projects.length === 0 ? (
-                <p className="no-projects">No projects found.</p>
+                <div className="no-projects">No projects found. Create your first project!</div>
             ) : (
-                <ul className="project-list">
-                    {projects.map((project) => (
-                        <li key={project.ID} className="project-item">
-                            {/* Project Info (Left) */}
-                            <div className="project-info">
-                                <h3>{project.Name}</h3>
-                                <div className="project-runtime">
-                                    Total Runtime: {formatRuntime(project.RuntimeInSeconds)}
-                                </div>
-                                <div className="project-status">
-                                    Status: <span className={isProjectActive(project) ? 'active' : 'inactive'}>
-                                        {isProjectActive(project) ? 'Active' : 'Inactive'}
-                                    </span>
-                                </div>
-                            </div>
+                <ul className={`project-list ${hasActiveProject ? 'has-active-project' : ''}`} ref={projectListRef}>
+                    {projects.map((project, index) => {
+                        const isMovingToTop = movingToTop.has(String(project.ID));
+                        const isMovingFromTop = movingFromTop.has(String(project.ID));
+                        const isAnimating = animatingItems.has(String(project.ID));
 
-                            {/* Timer (Middle) */}
-                            <div className="project-timer-container">
-                                {isProjectActive(project) && project.StartedAt && (
-                                    <ProjectTimer
-                                        startedAt={project.StartedAt}
-                                        runtimeSeconds={project.RuntimeInSeconds}
-                                    />
-                                )}
-                            </div>
+                        let animationClass = '';
+                        if (isAnimating) {
+                            if (isMovingToTop) {
+                                animationClass = 'animating moving-to-top';
+                            } else if (isMovingFromTop) {
+                                animationClass = 'animating moving-from-top';
+                            } else {
+                                animationClass = 'animating';
+                            }
+                        }
 
-                            {/* Actions (Right) */}
-                            <div className="project-actions">
-                                <button
-                                    className="start-button"
-                                    onClick={() => handleStartProject(project.Name)}
-                                    disabled={isProjectActive(project)}
-                                >
-                                    Start
-                                </button>
-                                <button
-                                    className="stop-button"
-                                    onClick={() => handleStopProject(project.Name)}
-                                    disabled={!isProjectActive(project)}
-                                >
-                                    Stop
-                                </button>
-                                <button
-                                    className="delete-button"
-                                    onClick={() => confirmDelete(project.Name)}
-                                    disabled={isProjectActive(project)}
-                                >
-                                    Delete
-                                </button>
-                            </div>
+                        // Return the project item
+                        const projectItem = (
+                            <li key={`project-${project.ID}`}>
+                                <ProjectItem
+                                    project={project}
+                                    onProjectUpdated={() => fetchProjects(false)}
+                                    data-id={project.ID}
+                                    className={animationClass}
+                                />
+                            </li>
+                        );
 
-                            {/* Delete Confirmation */}
-                            {deleteConfirmation === project.Name && (
-                                <div className="delete-confirmation">
-                                    <p>Are you sure you want to delete <strong>{project.Name}</strong>?</p>
-                                    <div className="confirmation-buttons">
-                                        <button
-                                            className="confirm-delete-button"
-                                            onClick={() => handleDeleteProject(project.Name)}
-                                        >
-                                            Yes, Delete
-                                        </button>
-                                        <button
-                                            className="cancel-button"
-                                            onClick={cancelDelete}
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </li>
-                    ))}
+                        // Add separator after the first item if it's active
+                        if (index === 0 && hasActiveProject) {
+                            return [
+                                projectItem,
+                                <li key="separator" className="separator-item">
+                                    <div className="project-separator"></div>
+                                </li>
+                            ];
+                        }
+
+                        return projectItem;
+                    })}
                 </ul>
             )}
         </div>
