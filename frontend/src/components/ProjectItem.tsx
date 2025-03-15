@@ -18,12 +18,12 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
     const [error, setError] = useState<string | null>(null);
 
     const isProjectActive = (): boolean => {
-        return project.StartedAt !== null;
+        return project.startedAt !== null;
     };
 
     const handleStartProject = async (): Promise<void> => {
         try {
-            await projectService.startProject(project.Name);
+            await projectService.startProject(project.name);
             onProjectUpdated();
             setError(null);
 
@@ -46,7 +46,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
         } catch (err: unknown) {
             const errorMessage = extractErrorMessage(
                 err,
-                `Failed to start project "${project.Name}"`
+                `Failed to start project "${project.name}"`
             );
             setError(errorMessage);
             console.error(err);
@@ -55,13 +55,13 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
 
     const handleStopProject = async (): Promise<void> => {
         try {
-            await projectService.stopProject(project.Name);
+            await projectService.stopProject(project.name);
             onProjectUpdated();
             setError(null);
         } catch (err: unknown) {
             const errorMessage = extractErrorMessage(
                 err,
-                `Failed to stop project "${project.Name}"`
+                `Failed to stop project "${project.name}"`
             );
             setError(errorMessage);
             console.error(err);
@@ -70,14 +70,14 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
 
     const handleDeleteProject = async (): Promise<void> => {
         try {
-            await projectService.deleteProject(project.Name);
+            await projectService.deleteProject(project.name);
             setDeleteConfirmation(false);
             onProjectUpdated();
             setError(null);
         } catch (err: unknown) {
             const errorMessage = extractErrorMessage(
                 err,
-                `Failed to delete project "${project.Name}"`
+                `Failed to delete project "${project.name}"`
             );
             setError(errorMessage);
             console.error(err);
@@ -95,11 +95,11 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
     };
 
     return (
-        <li className={`project-item ${className}`} data-id={project.ID} {...props}>
+        <li className={`project-item ${className}`} data-id={project.id} {...props}>
             <div className="project-info">
-                <h3>{project.Name}</h3>
+                <h3>{project.name}</h3>
                 <div className="project-runtime">
-                    <strong>Total Runtime:</strong> {formatRuntime(project.RuntimeInSeconds)}
+                    <strong>Total Runtime:</strong> {formatRuntime(project.runtimeInSeconds)}
                 </div>
                 <div className="project-status">
                     <strong>Status:</strong> <span className={isProjectActive() ? 'active' : 'inactive'}>
@@ -110,10 +110,10 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
             </div>
 
             <div className="project-timer-container">
-                {isProjectActive() && project.StartedAt && (
+                {isProjectActive() && project.startedAt && (
                     <ProjectTimer
-                        startedAt={project.StartedAt}
-                        runtimeSeconds={project.RuntimeInSeconds}
+                        startedAt={project.startedAt}
+                        runtimeSeconds={project.runtimeInSeconds}
                     />
                 )}
             </div>
@@ -144,7 +144,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
 
             {deleteConfirmation && (
                 <div className="delete-confirmation">
-                    <p>Are you sure you want to delete <strong>{project.Name}</strong>?</p>
+                    <p>Are you sure you want to delete <strong>{project.name}</strong>?</p>
                     {error && <div className="error confirmation-error">{error}</div>}
                     <div className="confirmation-buttons">
                         <button

@@ -2,6 +2,7 @@ package projects
 
 import (
 	"errors"
+	"math"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 )
@@ -10,6 +11,7 @@ type Handler interface {
 	Add(name string) error
 	Get(name string) (*Project, error)
 	GetAll() ([]*Project, error)
+	GetAllPaginated(page, perPage int) (*PaginatedProjects, error)
 	Delete(name string) error
 	StartProject(name string) error
 	StopProject(name string) error
@@ -47,6 +49,52 @@ func (h *handlerImpl) Delete(name string) error {
 
 func (h *handlerImpl) GetAll() ([]*Project, error) {
 	return h.repository.GetAllProjects()
+}
+
+func (h *handlerImpl) GetAllPaginated(page, perPage int) (*PaginatedProjects, error) {
+	allProjects, err := h.repository.GetAllProjects()
+	if err != nil {
+		return nil, err
+	}
+
+	result := &PaginatedProjects{
+		Page:       page,
+		PerPage:    perPage,
+		Total:      len(allProjects),
+		TotalPages: (len(allProjects) + perPage - 1) / perPage,
+	}
+
+	var activeProject *Project
+	var remainingProjects []*Project
+
+	for _, project := range allProjects {
+		if project.StartedAt != nil {
+			activeProject = project
+		} else {
+			remainingProjects = append(remainingProjects, project)
+		}
+	}
+
+	result.ActiveProject = activeProject
+	result.TotalPages = int(math.Ceil(float64(len(remainingProjects)) / float64(perPage)))
+
+	start := (page - 1) * perPage
+	end := start + perPage
+
+	if start > len(remainingProjects) {
+		start = len(remainingProjects)
+	}
+	if end > len(remainingProjects) {
+		end = len(remainingProjects)
+	}
+
+	if start < len(remainingProjects) {
+		result.Projects = remainingProjects[start:end]
+	} else {
+		result.Projects = []*Project{}
+	}
+
+	return result, nil
 }
 
 func (h *handlerImpl) Get(name string) (*Project, error) {

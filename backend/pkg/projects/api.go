@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 )
 
 const Prefix = "/projects"
+const DefaultPage = 1
+const DefaultPerPage = 2
 
 type API interface {
 	HTTPHandler(w http.ResponseWriter, r *http.Request)
@@ -92,13 +95,34 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name st
 	switch r.Method {
 	case http.MethodGet:
 		if name == "" {
-			projects, err := a.projectHandler.GetAll()
+			// Parse pagination parameters
+			page := DefaultPage
+			perPage := DefaultPerPage
+
+			if pageParam := r.URL.Query().Get("page"); pageParam != "" {
+				parsedPage, err := strconv.Atoi(pageParam)
+				if err != nil || parsedPage < 1 {
+					return fmt.Errorf("invalid page parameter: %s", pageParam)
+				}
+				page = parsedPage
+			}
+
+			if perPageParam := r.URL.Query().Get("per_page"); perPageParam != "" {
+				parsedPerPage, err := strconv.Atoi(perPageParam)
+				if err != nil || parsedPerPage < 1 {
+					return fmt.Errorf("invalid per_page parameter: %s", perPageParam)
+				}
+				perPage = parsedPerPage
+			}
+
+			// Use the paginated handler
+			paginatedProjects, err := a.projectHandler.GetAllPaginated(page, perPage)
 			if err != nil {
 				return err
 			}
 
 			w.WriteHeader(http.StatusOK)
-			jsonResponse, _ := json.Marshal(projects)
+			jsonResponse, _ := json.Marshal(paginatedProjects)
 			w.Write(jsonResponse)
 		} else {
 			project, err := a.projectHandler.Get(name)

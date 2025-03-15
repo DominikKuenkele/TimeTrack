@@ -24,10 +24,16 @@ const getPositions = (container: HTMLElement | null): Record<string, DOMRect> =>
 
 const ProjectList: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
+    const [activeProject, setActiveProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [isAnimating, setIsAnimating] = useState<boolean>(false);
     const [animatingItems, setAnimatingItems] = useState<Set<string>>(new Set());
+
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [perPage, setPerPage] = useState<number>(2);
+    const [totalPages, setTotalPages] = useState<number>(1);
+    const [totalProjects, setTotalProjects] = useState<number>(0);
 
     const [movingToTop, setMovingToTop] = useState<Set<string>>(new Set());
     const [movingFromTop, setMovingFromTop] = useState<Set<string>>(new Set());
@@ -37,15 +43,15 @@ const ProjectList: React.FC = () => {
     const projectListRef = useRef<HTMLUListElement>(null);
     const previousPositions = useRef<Record<string, DOMRect>>({});
 
-    const hasActiveProject = projects.length > 0 && projects[0].StartedAt !== null;
+    const hasActiveProject = activeProject !== null;
 
     useEffect(() => {
         fetchProjects();
-    }, []);
+    }, [currentPage, perPage]);
 
     useEffect(() => {
         if (!loading && projects.length > 0) {
-            const currentFirstProjectId = String(projects[0].ID);
+            const currentFirstProjectId = String(projects[0].id);
             if (!isAnimating) {
                 previousFirstProjectRef.current = currentFirstProjectId;
             }
@@ -66,7 +72,7 @@ const ProjectList: React.FC = () => {
 
             let currentFirstPositionId: string | null = null;
             if (projects.length > 0) {
-                currentFirstPositionId = String(projects[0].ID);
+                currentFirstPositionId = String(projects[0].id);
             }
 
             const previousFirstPositionId = previousFirstProjectRef.current;
@@ -146,8 +152,11 @@ const ProjectList: React.FC = () => {
                 previousPositions.current = getPositions(projectListRef.current);
             }
 
-            const data = await projectService.getAllProjects();
-            setProjects(data);
+            const data = await projectService.getAllProjects(currentPage, perPage);
+            setProjects(data.projects);
+            setActiveProject(data.activeProject);
+            setTotalPages(data.totalPages);
+            setTotalProjects(data.total);
             setError(null);
         } catch (err: unknown) {
             const errorMessage = extractErrorMessage(
@@ -163,9 +172,21 @@ const ProjectList: React.FC = () => {
         }
     };
 
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setCurrentPage(newPage);
+        }
+    };
+
     if (loading) {
         return <div className="loading">Loading projects...</div>;
     }
+
+    const displayProjects = [];
+    if (activeProject) {
+        displayProjects.push(activeProject);
+    }
+    displayProjects.push(...projects);
 
     return (
         <div className="project-list-container">
@@ -175,51 +196,76 @@ const ProjectList: React.FC = () => {
 
             {error && <div className="error">{error}</div>}
 
-            {projects.length === 0 ? (
+            {displayProjects.length === 0 ? (
                 <div className="no-projects">No projects found. Create your first project!</div>
             ) : (
-                <ul className={`project-list ${hasActiveProject ? 'has-active-project' : ''}`} ref={projectListRef}>
-                    {projects.map((project, index) => {
-                        const isMovingToTop = movingToTop.has(String(project.ID));
-                        const isMovingFromTop = movingFromTop.has(String(project.ID));
-                        const isAnimating = animatingItems.has(String(project.ID));
+                <>
+                    <ul className={`project-list ${hasActiveProject ? 'has-active-project' : ''}`} ref={projectListRef}>
+                        {displayProjects.map((project, index) => {
+                            const isMovingToTop = movingToTop.has(String(project.id));
+                            const isMovingFromTop = movingFromTop.has(String(project.id));
+                            const isAnimating = animatingItems.has(String(project.id));
 
-                        let animationClass = '';
-                        if (isAnimating) {
-                            if (isMovingToTop) {
-                                animationClass = 'animating moving-to-top';
-                            } else if (isMovingFromTop) {
-                                animationClass = 'animating moving-from-top';
-                            } else {
-                                animationClass = 'animating';
+                            let animationClass = '';
+                            if (isAnimating) {
+                                if (isMovingToTop) {
+                                    animationClass = 'animating moving-to-top';
+                                } else if (isMovingFromTop) {
+                                    animationClass = 'animating moving-from-top';
+                                } else {
+                                    animationClass = 'animating';
+                                }
                             }
-                        }
 
-                        // Return the project item
-                        const projectItem = (
-                            <li key={`project-${project.ID}`}>
-                                <ProjectItem
-                                    project={project}
-                                    onProjectUpdated={() => fetchProjects(false)}
-                                    data-id={project.ID}
-                                    className={animationClass}
-                                />
-                            </li>
-                        );
-
-                        // Add separator after the first item if it's active
-                        if (index === 0 && hasActiveProject) {
-                            return [
-                                projectItem,
-                                <li key="separator" className="separator-item">
-                                    <div className="project-separator"></div>
+                            const projectItem = (
+                                <li key={`project-${project.id}`}>
+                                    <ProjectItem
+                                        project={project}
+                                        onProjectUpdated={() => fetchProjects(false)}
+                                        data-id={project.id}
+                                        className={animationClass}
+                                    />
                                 </li>
-                            ];
-                        }
+                            );
 
-                        return projectItem;
-                    })}
-                </ul>
+                            if (index === 0 && hasActiveProject) {
+                                return [
+                                    projectItem,
+                                    <li key="separator" className="separator-item">
+                                        <div className="project-separator"></div>
+                                    </li>
+                                ];
+                            }
+
+                            return projectItem;
+                        })}
+                    </ul>
+
+                    {totalPages > 1 && (
+                        <div className="pagination">
+                            <button
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1}
+                                className="pagination-button"
+                            >
+                                Previous
+                            </button>
+
+                            <span className="pagination-info">
+                                Page {currentPage} of {totalPages} -
+                                ({totalProjects} {totalProjects === 1 ? 'project' : 'projects'})
+                            </span>
+
+                            <button
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                                className="pagination-button"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );

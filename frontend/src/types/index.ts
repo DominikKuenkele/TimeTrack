@@ -1,8 +1,17 @@
 export interface Project {
-    ID: number;
-    Name: string;
-    RuntimeInSeconds: number;
-    StartedAt: string | null;
+    id: number;
+    name: string;
+    runtimeInSeconds: number;
+    startedAt: string | null;
+}
+
+export interface PaginatedProjects {
+    activeProject: Project | null;
+    projects: Project[];
+    total: number;
+    page: number;
+    perPage: number;
+    totalPages: number;
 }
 
 export interface ApiResponse<T> {

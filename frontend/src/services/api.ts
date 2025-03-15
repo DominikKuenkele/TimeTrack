@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { Project } from '../types';
+import { PaginatedProjects, Project } from '../types';
 
 const API_URL = import.meta.env.VITE_API_URL;
 const NODE_ENV = import.meta.env.VITE_NODE_ENV;
@@ -19,9 +19,9 @@ const logErrorIfNeeded = (error: any) => {
 };
 
 export const projectService = {
-    getAllProjects: async (): Promise<Project[]> => {
+    getAllProjects: async (page = 1, perPage = 20): Promise<PaginatedProjects> => {
         try {
-            const response = await api.get<Project[]>('/projects');
+            const response = await api.get<PaginatedProjects>(`/projects?page=${page}&per_page=${perPage}`);
             return response.data;
         } catch (error) {
             logErrorIfNeeded(error);
