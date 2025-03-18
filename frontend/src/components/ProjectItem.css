@@ -16,8 +16,12 @@
 
     transform-origin: center center;
     will-change: transform, z-index;
-    transition: transform 0.3s ease-out, box-shadow 0.2s ease;
+    transition: transform 0.3s ease-out, box-shadow 0.2s ease, background-color 0.2s ease;
     z-index: 1;
+}
+
+.project-item.active-project {
+    background-color: #f7f7f7;
 }
 
 .project-item:hover {

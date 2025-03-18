@@ -24,14 +24,14 @@ const getPositions = (container: HTMLElement | null): Record<string, DOMRect> =>
 
 const ProjectList: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
-    const [activeProject, setActiveProject] = useState<Project | null>(null);
+    const [activeProject, setActiveProject] = useState<Project | undefined>(undefined);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [isAnimating, setIsAnimating] = useState<boolean>(false);
     const [animatingItems, setAnimatingItems] = useState<Set<string>>(new Set());
 
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const [perPage, setPerPage] = useState<number>(2);
+    const [perPage, setPerPage] = useState<number>(20);
     const [totalPages, setTotalPages] = useState<number>(1);
     const [totalProjects, setTotalProjects] = useState<number>(0);
 
@@ -43,11 +43,31 @@ const ProjectList: React.FC = () => {
     const projectListRef = useRef<HTMLUListElement>(null);
     const previousPositions = useRef<Record<string, DOMRect>>({});
 
-    const hasActiveProject = activeProject !== null;
+    // Add ref to track the previous page and prevent animations during page changes
+    const previousPageRef = useRef<number>(currentPage);
+
+    const hasActiveProject = activeProject !== undefined;
+
+    // Remove showCustomInput state since we're using direct input
+    const [perPageInput, setPerPageInput] = useState<string>(perPage.toString());
 
     useEffect(() => {
         fetchProjects();
     }, [currentPage, perPage]);
+
+    // Reset animation tracking when page changes
+    useEffect(() => {
+        // If the page has changed, reset animation tracking
+        if (previousPageRef.current !== currentPage) {
+            // Clear position tracking to prevent incorrect animations
+            previousPositions.current = {};
+            setIsAnimating(false);
+            setAnimatingItems(new Set());
+            setMovingToTop(new Set());
+            setMovingFromTop(new Set());
+            previousPageRef.current = currentPage;
+        }
+    }, [currentPage]);
 
     useEffect(() => {
         if (!loading && projects.length > 0) {
@@ -59,12 +79,14 @@ const ProjectList: React.FC = () => {
     }, [projects, loading, isAnimating]);
 
     useEffect(() => {
-        if (loading || !projectListRef.current) return;
+        // Skip animation if we're loading or page just changed
+        if (loading || !projectListRef.current || previousPageRef.current !== currentPage) return;
 
         const currentPositions = getPositions(projectListRef.current);
         const previousPos = previousPositions.current;
 
-        if (Object.keys(previousPos).length) {
+        // Only animate if we have previous positions and we're not changing pages
+        if (Object.keys(previousPos).length && previousPageRef.current === currentPage) {
             setIsAnimating(true);
             const movingItems = new Set<string>();
             const topMovers = new Set<string>();
@@ -81,6 +103,7 @@ const ProjectList: React.FC = () => {
 
             projectElements.forEach((el) => {
                 const id = el.getAttribute('data-id');
+                // Only animate elements that exist in both previous and current positions
                 if (id && previousPos[id] && currentPositions[id]) {
                     const deltaY = previousPos[id].top - currentPositions[id].top;
 
@@ -141,20 +164,21 @@ const ProjectList: React.FC = () => {
         }
 
         previousPositions.current = currentPositions;
-    }, [projects, loading]);
+    }, [projects, loading, currentPage]);
 
     const fetchProjects = async (showLoading = true): Promise<void> => {
         try {
             if (showLoading) {
                 setLoading(true);
             }
-            if (projectListRef.current && !showLoading) {
+            // Only store positions for animation if we're not changing pages and it's not initial load
+            if (projectListRef.current && !showLoading && previousPageRef.current === currentPage) {
                 previousPositions.current = getPositions(projectListRef.current);
             }
 
             const data = await projectService.getAllProjects(currentPage, perPage);
             setProjects(data.projects);
-            setActiveProject(data.activeProject);
+            setActiveProject(data.activeProject ?? undefined);
             setTotalPages(data.totalPages);
             setTotalProjects(data.total);
             setError(null);
@@ -173,9 +197,115 @@ const ProjectList: React.FC = () => {
     };
 
     const handlePageChange = (newPage: number) => {
-        if (newPage >= 1 && newPage <= totalPages) {
+        if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+            // Clear positions to prevent incorrect animations when page changes
+            previousPositions.current = {};
             setCurrentPage(newPage);
+            // Scroll to top when changing pages
+            window.scrollTo(0, 0);
         }
+    };
+
+    // Handle items per page change
+    const handlePerPageChange = (newPerPage: number) => {
+        if (newPerPage !== perPage) {
+            // Reset to first page when changing items per page
+            previousPositions.current = {};
+            setPerPage(newPerPage);
+            setCurrentPage(1);
+            // Scroll to top when changing per page
+            window.scrollTo(0, 0);
+        }
+    };
+
+    // Handle per page input change
+    const handlePerPageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Only allow positive numbers
+        const value = e.target.value.replace(/\D/g, '');
+        setPerPageInput(value);
+
+        // Apply the value immediately if valid
+        const numValue = parseInt(value, 10);
+        if (!isNaN(numValue) && numValue > 0) {
+            handlePerPageChange(numValue);
+        }
+    };
+
+    // Handle blur event (for when user clicks away)
+    const handlePerPageInputBlur = () => {
+        // Reset to current perPage if empty or invalid
+        if (!perPageInput || parseInt(perPageInput, 10) <= 0) {
+            setPerPageInput(perPage.toString());
+        }
+    };
+
+    // Generate page number buttons
+    const renderPageNumbers = () => {
+        const pageNumbers: React.ReactNode[] = [];
+        const maxPageButtons = 5; // Maximum number of page buttons to show
+
+        let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+        let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+
+        // Adjust start if we're near the end
+        if (endPage - startPage + 1 < maxPageButtons) {
+            startPage = Math.max(1, endPage - maxPageButtons + 1);
+        }
+
+        // Add first page button if not included in range
+        if (startPage > 1) {
+            pageNumbers.push(
+                <button
+                    key="1"
+                    onClick={() => handlePageChange(1)}
+                    className={`pagination-page-button ${1 === currentPage ? 'active' : ''}`}
+                >
+                    1
+                </button>
+            );
+
+            // Add ellipsis if there's a gap
+            if (startPage > 2) {
+                pageNumbers.push(
+                    <span key="ellipsis1" className="pagination-ellipsis">...</span>
+                );
+            }
+        }
+
+        // Add page numbers
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbers.push(
+                <button
+                    key={i}
+                    onClick={() => handlePageChange(i)}
+                    className={`pagination-page-button ${i === currentPage ? 'active' : ''}`}
+                >
+                    {i}
+                </button>
+            );
+        }
+
+        // Add last page button if not included in range
+        if (endPage < totalPages) {
+            // Add ellipsis if there's a gap
+            if (endPage < totalPages - 1) {
+                pageNumbers.push(
+                    <span key="ellipsis2" className="pagination-ellipsis">...</span>
+                );
+            }
+
+            pageNumbers.push(
+                <button
+                    key={totalPages}
+                    onClick={() => handlePageChange(totalPages)}
+                    className={`pagination-page-button ${totalPages === currentPage ? 'active' : ''}`}
+                >
+                    {totalPages}
+                </button>
+            );
+        }
+
+        return pageNumbers;
     };
 
     if (loading) {
@@ -241,28 +371,47 @@ const ProjectList: React.FC = () => {
                         })}
                     </ul>
 
-                    {totalPages > 1 && (
-                        <div className="pagination">
-                            <button
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 1}
-                                className="pagination-button"
-                            >
-                                Previous
-                            </button>
+                    {totalPages > 0 && (
+                        <div className="pagination-container">
+                            <div className="pagination">
+                                <button
+                                    onClick={() => handlePageChange(currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                    className="pagination-button"
+                                >
+                                    Previous
+                                </button>
 
-                            <span className="pagination-info">
+                                <div className="pagination-numbers">
+                                    {renderPageNumbers()}
+                                </div>
+
+                                <button
+                                    onClick={() => handlePageChange(currentPage + 1)}
+                                    disabled={currentPage === totalPages}
+                                    className="pagination-button"
+                                >
+                                    Next
+                                </button>
+                            </div>
+
+                            <div className="pagination-info">
                                 Page {currentPage} of {totalPages} -
                                 ({totalProjects} {totalProjects === 1 ? 'project' : 'projects'})
-                            </span>
+                            </div>
 
-                            <button
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages}
-                                className="pagination-button"
-                            >
-                                Next
-                            </button>
+                            <div className="per-page-selector">
+                                <label htmlFor="per-page">Projects per page:</label>
+                                <input
+                                    type="text"
+                                    id="per-page"
+                                    value={perPageInput}
+                                    onChange={handlePerPageInputChange}
+                                    onBlur={handlePerPageInputBlur}
+                                    className="per-page-input"
+                                    placeholder="Enter number"
+                                />
+                            </div>
                         </div>
                     )}
                 </>

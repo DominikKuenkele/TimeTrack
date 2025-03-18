@@ -95,7 +95,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
     };
 
     return (
-        <li className={`project-item ${className}`} data-id={project.id} {...props}>
+        <li className={`project-item ${isProjectActive() ? 'active-project' : ''} ${className}`} data-id={project.id} {...props}>
             <div className="project-info">
                 <h3>{project.name}</h3>
                 <div className="project-runtime">
