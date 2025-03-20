@@ -23,7 +23,6 @@ const getPositions = (container: HTMLElement | null): Record<string, DOMRect> =>
 interface ProjectListProps {
     activeProject: Project | undefined
     projects: Project[]
-    isLoadingProjects: boolean
 
     totalPages: number
     totalProjects: number
@@ -38,7 +37,6 @@ interface ProjectListProps {
 const ProjectList: React.FC<ProjectListProps> = ({
     activeProject,
     projects,
-    isLoadingProjects,
     totalPages,
     totalProjects,
     perPage,
@@ -86,16 +84,16 @@ const ProjectList: React.FC<ProjectListProps> = ({
     }, [currentPage]);
 
     useEffect(() => {
-        if (!isLoadingProjects && projects.length > 0) {
+        if (projects.length > 0) {
             const currentFirstProjectId = String(projects[0].id);
             if (!isAnimating) {
                 previousFirstProjectRef.current = currentFirstProjectId;
             }
         }
-    }, [projects, isLoadingProjects, isAnimating]);
+    }, [projects, isAnimating]);
 
     useEffect(() => {
-        if (isLoadingProjects || !projectListRef.current || previousPageRef.current !== currentPage) return;
+        if (!projectListRef.current || previousPageRef.current !== currentPage) return;
 
         const currentPositions = getPositions(projectListRef.current);
         const previousPos = previousPositions.current;
@@ -177,11 +175,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
         }
 
         previousPositions.current = currentPositions;
-    }, [projects, isLoadingProjects, currentPage]);
-
-    if (isLoadingProjects) {
-        return <div className="loading">Loading projects...</div>;
-    }
+    }, [projects, currentPage]);
 
     const displayProjects = [];
     if (activeProject) {

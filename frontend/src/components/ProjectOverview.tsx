@@ -11,7 +11,6 @@ import SearchForm from './SearchForm';
 const ProjectOverview: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [activeProject, setActiveProject] = useState<Project | undefined>(undefined);
-    const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
     const [searchTerm, setSearchTerm] = useState<string>('');
@@ -30,9 +29,10 @@ const ProjectOverview: React.FC = () => {
 
     const fetchProjects = async (): Promise<void> => {
         try {
-            setLoading(true);
-
             const data = await projectService.getProjectsLike(currentPage, perPage, searchTerm);
+            if (currentPage > data.totalPages) {
+                setCurrentPage(data.totalPages)
+            }
             setProjects(data.projects);
             setActiveProject(data.activeProject ?? undefined);
             setTotalPages(data.totalPages);
@@ -46,7 +46,6 @@ const ProjectOverview: React.FC = () => {
             setError(`Error: ${errorMessage}`);
             console.error(err);
         } finally {
-            setLoading(false);
             setUpdateProjects(false);
         }
     };
@@ -75,7 +74,6 @@ const ProjectOverview: React.FC = () => {
             <ProjectList
                 activeProject={activeProject}
                 projects={projects}
-                isLoadingProjects={loading}
                 totalPages={totalPages}
                 totalProjects={totalProjects}
                 perPage={perPage}
