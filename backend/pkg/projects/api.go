@@ -95,7 +95,6 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name st
 	switch r.Method {
 	case http.MethodGet:
 		if name == "" {
-			// Parse pagination parameters
 			page := DefaultPage
 			perPage := DefaultPerPage
 
@@ -115,8 +114,9 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name st
 				perPage = parsedPerPage
 			}
 
-			// Use the paginated handler
-			paginatedProjects, err := a.projectHandler.GetAllPaginated(page, perPage)
+			searchTerm := r.URL.Query().Get("search_term")
+
+			paginatedProjects, err := a.projectHandler.GetPaginatedLike(page, perPage, searchTerm)
 			if err != nil {
 				return err
 			}

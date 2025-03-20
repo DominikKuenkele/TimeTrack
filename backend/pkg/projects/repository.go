@@ -14,7 +14,7 @@ type Repository interface {
 	AddProject(name string) error
 	GetProject(name string) (*Project, error)
 	GetRunningProject() (*Project, error)
-	GetAllProjects() ([]*Project, error)
+	GetProjectsLike(searchTerm string) ([]*Project, error)
 	DeleteProject(name string) error
 	StartProject(name string) error
 	StopProject(name string) error
@@ -62,14 +62,18 @@ func (r *repositoryImpl) AddProject(name string) error {
 	return nil
 }
 
-func (r *repositoryImpl) GetAllProjects() ([]*Project, error) {
+func (r *repositoryImpl) GetProjectsLike(searchTerm string) ([]*Project, error) {
+	searchTerm = "%" + searchTerm + "%"
+
 	res, err := r.database.Query(
-		"SELECT " + columnProjectsID + ", " + columnProjectsName + ", " + columnProjectsStartedAt + ", " + columnProjectsRuntime + ", " + columnProjectsCreatedAt + ", " + columnProjectsUpdatedAt +
-			" FROM " + tableProjects +
-			" ORDER BY " + columnProjectsStartedAt + ", " + columnProjectsUpdatedAt + " DESC;",
+		"SELECT "+columnProjectsID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsRuntime+", "+columnProjectsCreatedAt+", "+columnProjectsUpdatedAt+
+			" FROM "+tableProjects+
+			" WHERE "+columnProjectsName+" ILIKE $1"+
+			" ORDER BY "+columnProjectsStartedAt+", "+columnProjectsUpdatedAt+" DESC;",
+		searchTerm,
 	)
 	if err != nil {
-		return nil, r.logAndAbstractError("Error getting all projects: %+v", err)
+		return nil, r.logAndAbstractError("Error getting projects: %+v", err)
 	}
 
 	projects := []*Project{}
@@ -82,15 +86,7 @@ func (r *repositoryImpl) GetAllProjects() ([]*Project, error) {
 	}
 
 	for _, project := range projects {
-		if project.StartedAt != nil {
-			*project.StartedAt = project.StartedAt.Local()
-		}
-		if project.CreatedAt != nil {
-			*project.CreatedAt = project.CreatedAt.Local()
-		}
-		if project.UpdatedAt != nil {
-			*project.UpdatedAt = project.UpdatedAt.Local()
-		}
+		project.DatesToLocal()
 	}
 
 	return projects, nil
@@ -113,15 +109,7 @@ func (r *repositoryImpl) GetProject(name string) (*Project, error) {
 		}
 	}
 
-	if project.StartedAt != nil {
-		*project.StartedAt = project.StartedAt.Local()
-	}
-	if project.CreatedAt != nil {
-		*project.CreatedAt = project.CreatedAt.Local()
-	}
-	if project.UpdatedAt != nil {
-		*project.UpdatedAt = project.UpdatedAt.Local()
-	}
+	project.DatesToLocal()
 
 	return project, nil
 }
@@ -144,15 +132,7 @@ func (r *repositoryImpl) GetRunningProject() (*Project, error) {
 		}
 	}
 
-	if project.StartedAt != nil {
-		*project.StartedAt = project.StartedAt.Local()
-	}
-	if project.CreatedAt != nil {
-		*project.CreatedAt = project.CreatedAt.Local()
-	}
-	if project.UpdatedAt != nil {
-		*project.UpdatedAt = project.UpdatedAt.Local()
-	}
+	project.DatesToLocal()
 
 	return project, nil
 }

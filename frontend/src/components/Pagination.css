@@ -1,0 +1,139 @@
+.pagination-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 20px;
+    padding: 15px 10px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+}
+
+.pagination-button {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+    min-width: 90px;
+}
+
+.pagination-button:hover {
+    background-color: #3a80d2;
+}
+
+.pagination-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.pagination-info {
+    margin: 15px 0;
+    font-size: 14px;
+    color: #555;
+    text-align: center;
+}
+
+.pagination-numbers {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pagination-page-button {
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 36px;
+    text-align: center;
+}
+
+.pagination-page-button:hover {
+    background-color: #e0e0e0;
+}
+
+.pagination-page-button.active {
+    background-color: #4a90e2;
+    color: white;
+    border-color: #4a90e2;
+}
+
+.pagination-ellipsis {
+    margin: 0 2px;
+    color: #777;
+    font-weight: bold;
+}
+
+.per-page-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.per-page-selector label {
+    font-size: 14px;
+    color: #555;
+}
+
+.per-page-input {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    width: 70px;
+    text-align: center;
+    color: #333;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.per-page-input:focus {
+    border-color: #4a90e2;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.per-page-input::placeholder {
+    color: #aaa;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .pagination {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .pagination-numbers {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .pagination-button {
+        flex: 1;
+        min-width: unset;
+    }
+
+    .per-page-selector {
+        flex-direction: column;
+        gap: 5px;
+        align-items: center;
+    }
+}

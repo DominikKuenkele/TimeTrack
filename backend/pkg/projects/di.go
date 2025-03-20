@@ -10,7 +10,7 @@ import (
 func BuildProject(logger logger.Logger, database database.Database) (API, error) {
 	projectRepository, err := NewRepository(logger, database)
 	if err != nil {
-		return nil, fmt.Errorf("Errror building project. %+v", err)
+		return nil, fmt.Errorf("errror building project. %+v", err)
 	}
 
 	projectHandler := NewHandler(logger, projectRepository)

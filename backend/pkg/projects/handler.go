@@ -11,7 +11,8 @@ type Handler interface {
 	Add(name string) error
 	Get(name string) (*Project, error)
 	GetAll() ([]*Project, error)
-	GetAllPaginated(page, perPage int) (*PaginatedProjects, error)
+	GetAllLike(searchTerm string) ([]*Project, error)
+	GetPaginatedLike(page, perPage int, searchTerm string) (*PaginatedProjects, error)
 	Delete(name string) error
 	StartProject(name string) error
 	StopProject(name string) error
@@ -48,11 +49,15 @@ func (h *handlerImpl) Delete(name string) error {
 }
 
 func (h *handlerImpl) GetAll() ([]*Project, error) {
-	return h.repository.GetAllProjects()
+	return h.repository.GetProjectsLike("")
 }
 
-func (h *handlerImpl) GetAllPaginated(page, perPage int) (*PaginatedProjects, error) {
-	allProjects, err := h.repository.GetAllProjects()
+func (h *handlerImpl) GetAllLike(searchTerm string) ([]*Project, error) {
+	return h.repository.GetProjectsLike(searchTerm)
+}
+
+func (h *handlerImpl) GetPaginatedLike(page, perPage int, searchTerm string) (*PaginatedProjects, error) {
+	allProjects, err := h.repository.GetProjectsLike(searchTerm)
 	if err != nil {
 		return nil, err
 	}

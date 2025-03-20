@@ -13,6 +13,18 @@ type Project struct {
 	UpdatedAt        *time.Time `json:"updatedAt"`
 }
 
+func (p *Project) DatesToLocal() {
+	if p.StartedAt != nil {
+		*p.StartedAt = p.StartedAt.Local()
+	}
+	if p.CreatedAt != nil {
+		*p.CreatedAt = p.CreatedAt.Local()
+	}
+	if p.UpdatedAt != nil {
+		*p.UpdatedAt = p.UpdatedAt.Local()
+	}
+}
+
 type PaginatedProjects struct {
 	ActiveProject *Project   `json:"activeProject,omitempty"`
 	Projects      []*Project `json:"projects"`
