@@ -116,7 +116,7 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name st
 
 			searchTerm := r.URL.Query().Get("search_term")
 
-			paginatedProjects, err := a.projectHandler.GetPaginatedLike(page, perPage, searchTerm)
+			paginatedProjects, err := a.projectHandler.GetPaginatedLike(r.Context(), page, perPage, searchTerm)
 			if err != nil {
 				return err
 			}
@@ -125,7 +125,7 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name st
 			jsonResponse, _ := json.Marshal(paginatedProjects)
 			w.Write(jsonResponse)
 		} else {
-			project, err := a.projectHandler.Get(name)
+			project, err := a.projectHandler.Get(r.Context(), name)
 			if err != nil {
 				return err
 			}
@@ -135,13 +135,13 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name st
 			w.Write(jsonResponse)
 		}
 	case http.MethodPost:
-		if err := a.projectHandler.Add(name); err != nil {
+		if err := a.projectHandler.Add(r.Context(), name); err != nil {
 			return err
 		}
 
 		w.WriteHeader(http.StatusCreated)
 	case http.MethodDelete:
-		if err := a.projectHandler.Delete(name); err != nil {
+		if err := a.projectHandler.Delete(r.Context(), name); err != nil {
 			return err
 		}
 
@@ -156,7 +156,7 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, name st
 func (a *apiImpl) handleStartProjectAction(w http.ResponseWriter, r *http.Request, name string) error {
 	switch r.Method {
 	case http.MethodPost:
-		if err := a.projectHandler.StartProject(name); err != nil {
+		if err := a.projectHandler.StartProject(r.Context(), name); err != nil {
 			return err
 		}
 
@@ -171,7 +171,7 @@ func (a *apiImpl) handleStartProjectAction(w http.ResponseWriter, r *http.Reques
 func (a *apiImpl) handleStopProjectAction(w http.ResponseWriter, r *http.Request, name string) error {
 	switch r.Method {
 	case http.MethodPost:
-		if err := a.projectHandler.StopProject(name); err != nil {
+		if err := a.projectHandler.StopProject(r.Context(), name); err != nil {
 			return err
 		}
 

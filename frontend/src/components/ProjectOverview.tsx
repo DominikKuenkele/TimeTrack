@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { projectService } from '../services/api';
 import { Project } from '../types';
 import { extractErrorMessage } from '../utils/errorUtils';
+import { useAuth } from './AuthContext';
 import CreateProjectForm from './CreateProjectForm';
 import ProjectList from './ProjectList';
 import './ProjectOverview.css';
@@ -10,7 +12,7 @@ import SearchForm from './SearchForm';
 
 const ProjectOverview: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
-    const [activeProject, setActiveProject] = useState<Project | undefined>(undefined);
+    const [activeProject, setActiveProject] = useState<Project | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const [searchTerm, setSearchTerm] = useState<string>('');
@@ -23,18 +25,31 @@ const ProjectOverview: React.FC = () => {
 
     const [updateProjects, setUpdateProjects] = useState<boolean>(true);
 
+    const { isLoggedIn } = useAuth();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!isLoggedIn) {
+            navigate('/login');
+        }
+    }, [isLoggedIn, navigate])
+
     useEffect(() => {
         fetchProjects();
     }, [currentPage, perPage, searchTerm, updateProjects])
 
     const fetchProjects = async (): Promise<void> => {
+        if (!isLoggedIn) {
+            return
+        }
+
         try {
             const data = await projectService.getProjectsLike(currentPage, perPage, searchTerm);
             if (currentPage > data.totalPages) {
                 setCurrentPage(data.totalPages)
             }
             setProjects(data.projects);
-            setActiveProject(data.activeProject ?? undefined);
+            setActiveProject(data.activeProject);
             setTotalPages(data.totalPages);
             setTotalProjects(data.total);
             setError(null);

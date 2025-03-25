@@ -5,7 +5,7 @@ import (
 )
 
 type Project struct {
-	ID               int32      `json:"id"`
+	UserID           string     `json:"userID"`
 	Name             string     `json:"name"`
 	RuntimeInSeconds uint64     `json:"runtimeInSeconds"`
 	StartedAt        *time.Time `json:"startedAt"`

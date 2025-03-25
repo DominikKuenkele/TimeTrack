@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/DominikKuenkele/TimeTrack/authentification"
 	"github.com/DominikKuenkele/TimeTrack/libraries/config"
 	"github.com/DominikKuenkele/TimeTrack/libraries/database"
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
@@ -43,12 +44,19 @@ func main() {
 	server := server.NewServer("", "80", logger)
 	server.AddHandler("/", defaultHandler(logger))
 
+	authenticator, err := authentification.BuildAuthenticator(logger, database)
+	if err != nil {
+		logger.Error(err.Error())
+		return
+	}
+	server.AddHandler(authentification.Prefix+"/", authenticator.HTTPHandler)
+
 	project, err := projects.BuildProject(logger, database)
 	if err != nil {
 		logger.Error(err.Error())
 		return
 	}
-	server.AddHandler(projects.Prefix+"/", project.HTTPHandler)
+	server.AddHandler(projects.Prefix+"/", authenticator.Authenticate(project.HTTPHandler))
 
 	if err := server.Start(); err != nil {
 		logger.Error(err.Error())

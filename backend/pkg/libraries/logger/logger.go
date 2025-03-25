@@ -26,6 +26,7 @@ type Logger interface {
 	Info(format string, a ...any)
 	Warning(format string, a ...any)
 	Error(format string, a ...any)
+	LogAndAbstractError(errorMessage string, format string, a ...any) error
 }
 
 type impl struct {
@@ -80,4 +81,10 @@ func (i *impl) Error(format string, a ...any) {
 		message := fmt.Sprintf(format, a...)
 		log.Println(red + strings.ToUpper(loglevel.Error.String()) + ": " + message + reset)
 	}
+}
+
+func (i *impl) LogAndAbstractError(errorMessage string, format string, args ...any) error {
+	i.Error(format, args...)
+
+	return fmt.Errorf(errorMessage)
 }

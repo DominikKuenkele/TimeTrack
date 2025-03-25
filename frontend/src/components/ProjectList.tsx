@@ -21,7 +21,7 @@ const getPositions = (container: HTMLElement | null): Record<string, DOMRect> =>
 };
 
 interface ProjectListProps {
-    activeProject: Project | undefined
+    activeProject: Project | null
     projects: Project[]
 
     totalPages: number
@@ -57,8 +57,6 @@ const ProjectList: React.FC<ProjectListProps> = ({
     const previousPositions = useRef<Record<string, DOMRect>>({});
 
     const previousPageRef = useRef<number>(currentPage);
-
-    const hasActiveProject = activeProject !== undefined;
 
     const updateProjects = () => {
         if (projectListRef.current && previousPageRef.current === currentPage) {
@@ -184,14 +182,14 @@ const ProjectList: React.FC<ProjectListProps> = ({
     displayProjects.push(...projects);
 
     return displayProjects.length === 0 ? (
-        <div className="no-projects">No projects found. Create your first project!</div>
+        <div className="no-projects">No projects found.</div>
     ) : (
         <>
-            <ul className={`project-list ${hasActiveProject ? 'has-active-project' : ''}`} ref={projectListRef}>
+            <ul className={`project-list ${activeProject ? 'has-active-project' : ''}`} ref={projectListRef}>
                 {displayProjects.map((project, index) => {
-                    const isMovingToTop = movingToTop.has(String(project.id));
-                    const isMovingFromTop = movingFromTop.has(String(project.id));
-                    const isAnimating = animatingItems.has(String(project.id));
+                    const isMovingToTop = movingToTop.has(String(project.name));
+                    const isMovingFromTop = movingFromTop.has(String(project.name));
+                    const isAnimating = animatingItems.has(String(project.name));
 
                     let animationClass = '';
                     if (isAnimating) {
@@ -205,17 +203,17 @@ const ProjectList: React.FC<ProjectListProps> = ({
                     }
 
                     const projectItem = (
-                        <li key={`project-${project.id}`}>
+                        <li key={`project-${project.name}`}>
                             <ProjectItem
                                 project={project}
                                 onProjectUpdated={() => updateProjects()}
-                                data-id={project.id}
+                                data-id={project.name}
                                 className={animationClass}
                             />
                         </li>
                     );
 
-                    if (index === 0 && hasActiveProject) {
+                    if (index === 0 && activeProject) {
                         return [
                             projectItem,
                             <li key="separator" className="separator-item">

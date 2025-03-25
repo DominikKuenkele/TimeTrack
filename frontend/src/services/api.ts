@@ -9,6 +9,7 @@ const api: AxiosInstance = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true,
 });
 
 const logErrorIfNeeded = (error: any) => {
@@ -22,6 +23,9 @@ export const projectService = {
     getProjectsLike: async (page = 1, perPage = 20, searchTerm = ""): Promise<PaginatedProjects> => {
         try {
             const response = await api.get<PaginatedProjects>(`/projects?page=${page}&per_page=${perPage}&search_term=${searchTerm}`);
+            if (response.data.activeProject === undefined) {
+                response.data.activeProject = null;
+            }
             return response.data;
         } catch (error) {
             logErrorIfNeeded(error);
@@ -65,6 +69,55 @@ export const projectService = {
         try {
             const encodedName = encodeURIComponent(projectName);
             const response = await api.post<Project>(`/projects/${encodedName}/stop`);
+            return response.data;
+        } catch (error) {
+            logErrorIfNeeded(error);
+            throw error;
+        }
+    },
+};
+
+export const userService = {
+    login: async (username = "", password = ""): Promise<void> => {
+        try {
+            const data = {
+                "username": username,
+                "password": password
+            }
+
+            await api.post<void>('/user/login', data);
+        } catch (error) {
+            logErrorIfNeeded(error);
+            throw error;
+        }
+    },
+
+    logout: async (): Promise<void> => {
+        try {
+            await api.post<void>('/user/logout');
+        } catch (error) {
+            logErrorIfNeeded(error);
+            throw error;
+        }
+    },
+
+    createUser: async (username = "", password = ""): Promise<void> => {
+        try {
+            const data = {
+                "username": username,
+                "password": password
+            }
+
+            await api.post<void>('/user/create', data);
+        } catch (error) {
+            logErrorIfNeeded(error);
+            throw error;
+        }
+    },
+
+    validate: async (): Promise<boolean> => {
+        try {
+            const response = await api.get<boolean>('/user/validate');
             return response.data;
         } catch (error) {
             logErrorIfNeeded(error);
