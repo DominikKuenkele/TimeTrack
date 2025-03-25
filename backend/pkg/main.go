@@ -44,7 +44,7 @@ func main() {
 	server := server.NewServer("", "80", logger)
 	server.AddHandler("/", defaultHandler(logger))
 
-	authenticator, err := authentification.BuildAuthenticator(logger, database)
+	authenticator, err := authentification.BuildAuthenticator(logger, database, cfg.EnableCreateUser)
 	if err != nil {
 		logger.Error(err.Error())
 		return

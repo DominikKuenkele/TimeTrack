@@ -11,6 +11,8 @@ type Config struct {
 	PostgresPassword string `env:"POSTGRES_PASSWORD,required"`
 
 	LogLevel string `env:"LOG_LEVEL" envDefault:"debug"`
+
+	EnableCreateUser bool `env:"ENABLE_CREATE_USER" envDefault:"false"`
 }
 
 func ReadConfig() (Config, error) {

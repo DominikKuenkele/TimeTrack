@@ -25,14 +25,16 @@ type API interface {
 type apiImpl struct {
 	logger                  logger.Logger
 	authentificationHandler Handler
+	enableCreateUser        bool
 }
 
 var _ API = &apiImpl{}
 
-func NewAPI(logger logger.Logger, authentificationHandler Handler) API {
+func NewAPI(logger logger.Logger, authentificationHandler Handler, enableCreateUser bool) API {
 	return &apiImpl{
 		logger:                  logger,
 		authentificationHandler: authentificationHandler,
+		enableCreateUser:        enableCreateUser,
 	}
 }
 
@@ -42,8 +44,11 @@ func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 	actionMap := map[string]actionFunc{
 		"login":    a.handleLoginAction,
 		"logout":   a.handleLogoutAction,
-		"create":   a.handleCreateAction,
 		"validate": a.handleValidateAction,
+	}
+
+	if a.enableCreateUser {
+		actionMap["create"] = a.handleCreateAction
 	}
 
 	w.Header().Set("Content-Type", "application/json")

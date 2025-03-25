@@ -7,7 +7,7 @@ import (
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 )
 
-func BuildAuthenticator(logger logger.Logger, database database.Database) (API, error) {
+func BuildAuthenticator(logger logger.Logger, database database.Database, enableCreateUser bool) (API, error) {
 	sessionRepository, err := NewSessionRepository(logger, database)
 	if err != nil {
 		return nil, fmt.Errorf("error building authenticator. %+v", err)
@@ -19,7 +19,7 @@ func BuildAuthenticator(logger logger.Logger, database database.Database) (API, 
 	}
 
 	authenticatorHandler := NewHandler(logger, sessionRepository, userRepository)
-	api := NewAPI(logger, authenticatorHandler)
+	api := NewAPI(logger, authenticatorHandler, enableCreateUser)
 
 	return api, nil
 }
