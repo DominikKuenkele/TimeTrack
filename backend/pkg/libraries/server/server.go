@@ -54,6 +54,8 @@ func (s *serverConfig) logMiddleware(h http.HandlerFunc) http.HandlerFunc {
 
 func (s *serverConfig) corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.logger.Debug(r.Header.Get("Origin"))
+
 		w.Header().Set("Access-Control-Allow-Origin", s.frontendAddress)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
