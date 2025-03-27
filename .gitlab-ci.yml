@@ -7,6 +7,8 @@ build_frontend:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
   script:
+    - echo "VITE_API_URL=${VITE_API_URL}" > ${CI_PROJECT_DIR}/frontend/.env
+    - echo "VITE_NODE_ENV=${VITE_NODE_ENV}" >> ${CI_PROJECT_DIR}/frontend/.env
     - /kaniko/executor
       --context "${CI_PROJECT_DIR}/frontend"
       --dockerfile "${CI_PROJECT_DIR}/frontend/Dockerfile"
@@ -22,8 +24,6 @@ build_backend:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
   script:
-    - echo "VITE_API_URL=${VITE_API_URL}" > ${CI_PROJECT_DIR}/frontend/.env
-    - echo "VITE_NODE_ENV=${VITE_NODE_ENV}" >> ${CI_PROJECT_DIR}/frontend/.env
     - /kaniko/executor
       --context "${CI_PROJECT_DIR}/backend"
       --dockerfile "${CI_PROJECT_DIR}/backend/Dockerfile"
