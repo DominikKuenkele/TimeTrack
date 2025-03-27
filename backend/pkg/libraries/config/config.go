@@ -10,7 +10,7 @@ type Config struct {
 	PostgresUser     string `env:"POSTGRES_USER,required"`
 	PostgresPassword string `env:"POSTGRES_PASSWORD,required"`
 
-	FrontendAddress string `env:FRONTEND_ADDRESS,required`
+	FrontendAddress string `env:"FRONTEND_ADDRESS,required"`
 
 	LogLevel string `env:"LOG_LEVEL" envDefault:"debug"`
 
