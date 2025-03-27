@@ -13,20 +13,22 @@ type Server interface {
 }
 
 type serverConfig struct {
-	address string
-	port    string
-	mux     *http.ServeMux
-	logger  logger.Logger
+	address         string
+	port            string
+	frontendAddress string
+	mux             *http.ServeMux
+	logger          logger.Logger
 }
 
 var _ Server = &serverConfig{}
 
-func NewServer(address, port string, logger logger.Logger) Server {
+func NewServer(address, port, frontendAddress string, logger logger.Logger) Server {
 	return &serverConfig{
-		address: address,
-		port:    port,
-		mux:     http.NewServeMux(),
-		logger:  logger,
+		address:         address,
+		port:            port,
+		frontendAddress: frontendAddress,
+		mux:             http.NewServeMux(),
+		logger:          logger,
 	}
 }
 
@@ -39,13 +41,29 @@ func (s *serverConfig) Start() error {
 }
 
 func (s *serverConfig) AddHandler(pattern string, handler http.HandlerFunc) {
-	s.mux.Handle(pattern, s.logMiddleware(handler))
+	s.mux.Handle(pattern, s.corsMiddleware(s.logMiddleware(handler)))
 }
 
-func (s *serverConfig) logMiddleware(h http.HandlerFunc) http.Handler {
+func (s *serverConfig) logMiddleware(h http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.logger.Info("Received request: %s %s", r.Method, r.URL.String())
 
 		h.ServeHTTP(w, r)
+	})
+}
+
+func (s *serverConfig) corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", s.frontendAddress)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
 	})
 }
