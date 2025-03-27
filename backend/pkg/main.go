@@ -56,7 +56,7 @@ func main() {
 		logger.Error(err.Error())
 		return
 	}
-	server.AddHandler(projects.Prefix+"/", authenticator.Authenticate(project.HTTPHandler))
+	server.AddHandler(projects.Prefix, authenticator.Authenticate(project.HTTPHandler))
 
 	if err := server.Start(); err != nil {
 		logger.Error(err.Error())

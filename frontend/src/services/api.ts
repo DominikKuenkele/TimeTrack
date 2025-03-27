@@ -22,7 +22,7 @@ const logErrorIfNeeded = (error: any) => {
 export const projectService = {
     getProjectsLike: async (page = 1, perPage = 20, searchTerm = ""): Promise<PaginatedProjects> => {
         try {
-            const response = await api.get<PaginatedProjects>(`/projects?page=${page}&per_page=${perPage}&search_term=${searchTerm}`);
+            const response = await api.get<PaginatedProjects>(`/projects/?page=${page}&per_page=${perPage}&search_term=${searchTerm}`);
             if (response.data.activeProject === undefined) {
                 response.data.activeProject = null;
             }
