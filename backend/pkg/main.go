@@ -41,7 +41,7 @@ func main() {
 	}
 	defer database.Close()
 
-	server := server.NewServer("", "80", cfg.FrontendAddress, logger)
+	server := server.NewServer("", "80", logger)
 	server.AddHandler("/", defaultHandler(logger))
 
 	authenticator, err := authentification.BuildAuthenticator(logger, database, cfg.EnableCreateUser)
