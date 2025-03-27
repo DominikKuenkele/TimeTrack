@@ -6,10 +6,8 @@
     "dependencies": {
         "axios": "^1.8.3",
         "react": "^19.0.0",
-        "react-cookie": "^8.0.1",
         "react-dom": "^19.0.0",
         "react-router-dom": "^7.3.0",
-        "styled-components": "^6.1.15"
     },
     "devDependencies": {
         "@types/node": "^22.13.10",
