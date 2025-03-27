@@ -28,24 +28,45 @@
     display: inline-block;
 }
 
-.nav ul {
+nav {
+    display: flex;
+}
+
+nav a, nav button {
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s;
+    padding: 10px 15px;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+nav Link:hover, nav button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #ecf0f1;
+}
+
+nav ul {
     display: flex;
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
-.nav li {
+nav li {
     margin-left: 20px;
 }
 
-.nav a {
+nav a {
     color: white;
     text-decoration: none;
     font-weight: 500;
     transition: opacity 0.2s;
 }
 
-.nav a:hover {
+nav a:hover {
     opacity: 0.8;
 }
