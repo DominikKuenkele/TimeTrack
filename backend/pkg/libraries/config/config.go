@@ -13,6 +13,7 @@ type Config struct {
 	FrontendAddress string `env:"FRONTEND_ADDRESS,required"`
 
 	LogLevel string `env:"LOG_LEVEL" envDefault:"debug"`
+	LogFile  string `env:"LOG_FILE"`
 
 	EnableCreateUser bool `env:"ENABLE_CREATE_USER" envDefault:"false"`
 }

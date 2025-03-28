@@ -11,6 +11,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
       - LOG_LEVEL=${LOG_LEVEL}
+      - LOG_FILE=${LOG_FILE}
       - ENABLE_CREATE_USER=${ENABLE_CREATE_USER}
       - FRONTEND_ADDRESS=${FRONTEND_ADDRESS}
     depends_on:
@@ -34,6 +35,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
       - LOG_LEVEL=${LOG_LEVEL}
+      - LOG_FILE=${LOG_FILE}
       - ENABLE_CREATE_USER=${ENABLE_CREATE_USER}
       - FRONTEND_ADDRESS=${FRONTEND_ADDRESS}
     depends_on:
@@ -42,6 +44,7 @@ services:
     volumes:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
+      - time-track:/app
     profiles: ["debug"]
 
   db:
