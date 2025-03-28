@@ -66,7 +66,5 @@ func (i *fileLogger) writeToFile(message string) {
 
 	log.SetOutput(file)
 
-	content := []byte(message + "\n")
-
-	log.Println(content)
+	log.Println(message)
 }
