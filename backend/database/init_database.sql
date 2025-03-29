@@ -25,14 +25,24 @@ CREATE TRIGGER update_sessions_modtime BEFORE
 UPDATE ON sessions FOR EACH ROW EXECUTE FUNCTION update_modified_column();
 -- Projects --
 CREATE TABLE IF NOT EXISTS projects (
+    project_id SERIAL PRIMARY KEY,
     user_id TEXT NOT NULL,
     name TEXT NOT NULL,
     started_at TIMESTAMP,
-    runtime BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
-    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, name)
+    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
 );
 CREATE TRIGGER update_projects_modtime BEFORE
 UPDATE ON projects FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+CREATE TABLE IF NOT EXISTS activities (
+    activity_id SERIAL PRIMARY KEY,
+    project_id SERIAL NOT NULL,
+    started_at TIMESTAMP,
+    ended_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    FOREIGN KEY (project_id) REFERENCES projects (project_id) ON DELETE CASCADE
+);
+CREATE TRIGGER update_activities_modtime BEFORE
+UPDATE ON activities FOR EACH ROW EXECUTE FUNCTION update_modified_column();

@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/database"
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
+	"github.com/DominikKuenkele/TimeTrack/libraries/utilitites"
+	"github.com/lib/pq"
 )
 
 type Repository interface {
@@ -40,12 +41,20 @@ func NewRepository(logger logger.Logger, database database.Database) (Repository
 
 const (
 	tableProjects           = "projects"
+	columnProjectsProjectID = "project_id"
 	columnProjectsUserID    = "user_id"
 	columnProjectsName      = "name"
 	columnProjectsStartedAt = "started_at"
-	columnProjectsRuntime   = "runtime"
 	columnProjectsCreatedAt = "created_at"
 	columnProjectsUpdatedAt = "updated_at"
+
+	tableActvities              = "activities"
+	columnsActivitiesActivityID = "activity_id"
+	columnsActivitiesProjectID  = "project_id"
+	columnsActivitiesStartedAt  = "started_at"
+	columnsActivitiesEndedAt    = "ended_at"
+	columnsActivitiesCreatedAt  = "created_at"
+	columnsActivitiesUpdatedAt  = "updated_at"
 )
 
 func (r *repositoryImpl) AddProject(userID, name string) error {
@@ -70,65 +79,141 @@ func (r *repositoryImpl) AddProject(userID, name string) error {
 func (r *repositoryImpl) GetProjectsLike(userID, searchTerm string) ([]*Project, error) {
 	searchTerm = "%" + searchTerm + "%"
 
-	res, err := r.database.Query(
-		"SELECT "+columnProjectsUserID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsRuntime+", "+columnProjectsCreatedAt+", "+columnProjectsUpdatedAt+
+	rows, err := r.database.Query(
+		"SELECT "+columnProjectsProjectID+", "+columnProjectsUserID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsCreatedAt+", "+columnProjectsUpdatedAt+
 			" FROM "+tableProjects+
 			" WHERE "+columnProjectsUserID+"=$1 AND "+columnProjectsName+" ILIKE $2"+
-			" ORDER BY "+columnProjectsStartedAt+", "+columnProjectsUpdatedAt+" DESC;",
+			" ORDER BY "+columnProjectsUpdatedAt+" DESC;",
 		userID, searchTerm,
 	)
 	if err != nil {
 		return nil, r.logger.LogAndAbstractError("database error", "Error getting projects: %+v", err)
 	}
+	defer rows.Close()
 
-	projects := []*Project{}
-	for res.Next() {
-		project := &Project{}
-		if err := res.Scan(&project.UserID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt, &project.UpdatedAt); err != nil {
+	projectOrder := []int{}
+	projectMap := map[int]*Project{}
+	for rows.Next() {
+		project := &DbProject{}
+		if err := rows.Scan(
+			&project.ID,
+			&project.UserID,
+			&project.Name,
+			&project.StartedAt,
+			&project.CreatedAt,
+			&project.UpdatedAt,
+		); err != nil {
 			return nil, r.logger.LogAndAbstractError("database error", "Error scanning project: %+v", err)
 		}
-		projects = append(projects, project)
+
+		projectMap[project.ID] = project.ToDomain()
+		projectOrder = append(projectOrder, project.ID)
 	}
 
-	for _, project := range projects {
-		project.DatesToLocal()
+	if err = r.readActivities(projectMap); err != nil {
+		return nil, err
+	}
+
+	projects := make([]*Project, 0, len(projectOrder))
+	for _, projectID := range projectOrder {
+		projectMap[projectID].DatesToLocal()
+		projectMap[projectID].RuntimeInSeconds = projectMap[projectID].Activities.CalculateRuntime()
+		projects = append(projects, projectMap[projectID])
 	}
 
 	return projects, nil
 }
 
-func (r *repositoryImpl) GetProject(userID, name string) (*Project, error) {
-	var project = &Project{}
-	if err := r.database.QueryRow(
-		"SELECT "+columnProjectsUserID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsRuntime+", "+columnProjectsCreatedAt+", "+columnProjectsUpdatedAt+
+func (r *repositoryImpl) readActivities(projects map[int]*Project) error {
+	projectIDs := utilitites.MapKeysToSlice(projects)
+
+	rows, err := r.database.Query(
+		"SELECT "+columnsActivitiesActivityID+", "+columnsActivitiesProjectID+", "+columnsActivitiesStartedAt+", "+columnsActivitiesEndedAt+", "+columnsActivitiesCreatedAt+", "+columnsActivitiesUpdatedAt+
+			" FROM "+tableActvities+
+			" WHERE "+columnsActivitiesProjectID+"=ANY($1);",
+		pq.Array(projectIDs),
+	)
+	if err != nil {
+		return r.logger.LogAndAbstractError("database error", "Error getting activities: %+v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		activity := &DbActivity{}
+		if err := rows.Scan(
+			&activity.ID,
+			&activity.ProjectID,
+			&activity.StartedAt,
+			&activity.EndedAt,
+			&activity.CreatedAt,
+			&activity.UpdatedAt,
+		); err != nil {
+			return r.logger.LogAndAbstractError("database error", "Error scanning activities: %+v", err)
+		}
+
+		projects[activity.ProjectID].Activities = append(projects[activity.ProjectID].Activities, activity.ToDomain())
+	}
+
+	return nil
+}
+
+func (r *repositoryImpl) readSingleProject(whereClause string, args []any) (*Project, error) {
+	project := &Project{}
+	err := r.database.QueryRow(
+		"SELECT"+
+			" "+columnProjectsProjectID+", "+columnProjectsUserID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsCreatedAt+", "+columnProjectsUpdatedAt+
 			" FROM "+tableProjects+
-			" WHERE "+columnProjectsUserID+"=$1 AND "+columnProjectsName+"=$2;",
+			" "+whereClause+
+			" LIMIT 1;",
+		args,
+		&project.ID,
+		&project.UserID,
+		&project.Name,
+		&project.StartedAt,
+		&project.CreatedAt,
+		&project.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return project, nil
+}
+
+func (r *repositoryImpl) GetProject(userID, name string) (*Project, error) {
+	project, err := r.readSingleProject(
+		"WHERE "+columnProjectsUserID+"=$1 AND "+columnProjectsName+"=$2",
 		[]any{userID, name},
-		&project.UserID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt, &project.UpdatedAt,
-	); err != nil {
+	)
+	if err != nil {
 		switch {
 		case errors.As(err, &database.NoRowsError{}):
-			return nil, fmt.Errorf("project '%s' not found", name)
+			return nil, fmt.Errorf("project %s not found", name)
 		default:
 			return nil, r.logger.LogAndAbstractError("database error", "Error scanning project: %+v", err)
 		}
 	}
 
+	projectMap := map[int]*Project{
+		project.ID: project,
+	}
+
+	if err = r.readActivities(projectMap); err != nil {
+		return nil, err
+	}
+
 	project.DatesToLocal()
+	project.RuntimeInSeconds = project.Activities.CalculateRuntime()
 
 	return project, nil
 }
 
 func (r *repositoryImpl) GetRunningProject(userID string) (*Project, error) {
-	var project = &Project{}
-	if err := r.database.QueryRow(
-		"SELECT "+columnProjectsUserID+", "+columnProjectsName+", "+columnProjectsStartedAt+", "+columnProjectsRuntime+", "+columnProjectsCreatedAt+", "+columnProjectsUpdatedAt+
-			" FROM "+tableProjects+
-			" WHERE "+columnProjectsUserID+"=$1 AND "+columnProjectsStartedAt+" IS NOT NULL"+
-			" LIMIT 1;",
+	project, err := r.readSingleProject(
+		"WHERE "+columnProjectsUserID+"=$1 AND "+columnProjectsStartedAt+" IS NOT NULL",
 		[]any{userID},
-		&project.UserID, &project.Name, &project.StartedAt, &project.RuntimeInSeconds, &project.CreatedAt, &project.UpdatedAt,
-	); err != nil {
+	)
+	if err != nil {
 		switch {
 		case errors.As(err, &database.NoRowsError{}):
 			return nil, nil
@@ -137,7 +222,16 @@ func (r *repositoryImpl) GetRunningProject(userID string) (*Project, error) {
 		}
 	}
 
+	projectMap := map[int]*Project{
+		project.ID: project,
+	}
+
+	if err = r.readActivities(projectMap); err != nil {
+		return nil, err
+	}
+
 	project.DatesToLocal()
+	project.RuntimeInSeconds = project.Activities.CalculateRuntime()
 
 	return project, nil
 }
@@ -193,10 +287,20 @@ func (r *repositoryImpl) StartProject(userID, name string) error {
 
 	if _, err := r.database.ExecWithTx(
 		tx,
+		"INSERT INTO "+tableActvities+
+			" ("+columnsActivitiesProjectID+", "+columnsActivitiesStartedAt+")"+
+			" VALUES ($1, NOW());",
+		project.ID,
+	); err != nil {
+		return r.logger.LogAndAbstractError("database error", "Couldn't start project '%s': %+v", name, err)
+	}
+
+	if _, err := r.database.ExecWithTx(
+		tx,
 		"UPDATE "+tableProjects+
 			" SET "+columnProjectsStartedAt+"=NOW()"+
-			" WHERE "+columnProjectsUserID+"=$1 AND "+columnProjectsName+"=$2;",
-		userID, name,
+			" WHERE "+columnProjectsProjectID+"=$1;",
+		project.ID,
 	); err != nil {
 		return r.logger.LogAndAbstractError("database error", "Couldn't start project '%s': %+v", name, err)
 	}
@@ -228,19 +332,47 @@ func (r *repositoryImpl) stopProjectWithTx(tx *sql.Tx, userID, name string) erro
 		return fmt.Errorf("project not running")
 	}
 
-	runtime := project.RuntimeInSeconds + uint64(time.Since(*project.StartedAt).Seconds())
-	query := "UPDATE " + tableProjects +
-		" SET " + columnProjectsRuntime + "=$1, " + columnProjectsStartedAt + "=NULL" +
-		" WHERE " + columnProjectsUserID + "=$2 AND " + columnProjectsName + "=$3;"
-	args := []any{runtime, userID, name}
-
-	if tx == nil {
-		_, err = r.database.Exec(query, args...)
-	} else {
-		_, err = r.database.ExecWithTx(tx, query, args...)
+	externalTx := tx != nil
+	if !externalTx {
+		tx, err = r.database.Begin()
+		if err != nil {
+			return r.logger.LogAndAbstractError("database error", "Couldn't create transaction: %+v", err)
+		}
+		defer func() {
+			if tx != nil {
+				r.logger.Info("Rolling back transaction while stopping project")
+				if err := tx.Rollback(); err != nil {
+					r.logger.Error("Failed to rollback transaction: %+v", err)
+				}
+			}
+		}()
 	}
+
+	_, err = r.database.ExecWithTx(
+		tx,
+		"UPDATE "+tableActvities+
+			" SET "+columnsActivitiesEndedAt+"=NOW()"+
+			" WHERE "+columnsActivitiesProjectID+"=$1 AND "+columnsActivitiesEndedAt+" IS NULL;",
+		project.ID,
+	)
 	if err != nil {
 		return r.logger.LogAndAbstractError("database error", "Couldn't stop project '%s': %+v", name, err)
+	}
+
+	_, err = r.database.ExecWithTx(
+		tx,
+		"UPDATE "+tableProjects+
+			" SET "+columnProjectsStartedAt+"=NULL"+
+			" WHERE "+columnProjectsProjectID+"=$1;",
+		project.ID,
+	)
+	if err != nil {
+		return r.logger.LogAndAbstractError("database error", "Couldn't stop project '%s': %+v", name, err)
+	}
+
+	if !externalTx {
+		tx.Commit()
+		tx = nil
 	}
 
 	return nil
