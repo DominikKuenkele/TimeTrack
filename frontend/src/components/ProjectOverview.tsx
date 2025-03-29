@@ -80,8 +80,8 @@ const ProjectOverview: React.FC = () => {
             <h2>Projects</h2>
 
             <div className="project-overview-header">
-                <SearchForm searchTerm={searchTerm} setSearchTerm={udpateSearchTerm} />
                 <CreateProjectForm onProjectCreated={handleProjectCreation} />
+                <SearchForm searchTerm={searchTerm} setSearchTerm={udpateSearchTerm} />
             </div>
 
             {error && <div className="project-overview-error">{error}</div>}
