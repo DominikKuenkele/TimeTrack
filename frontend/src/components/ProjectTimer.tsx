@@ -4,15 +4,14 @@ import './ProjectTimer.css';
 
 interface ProjectTimerProps {
     startedAt: string;
-    runtimeSeconds: number;
 }
 
-const ProjectTimer: React.FC<ProjectTimerProps> = ({ startedAt, runtimeSeconds }) => {
+const ProjectTimer: React.FC<ProjectTimerProps> = ({ startedAt }) => {
     const [elapsedTime, setElapsedTime] = useState<number>(0);
 
     useEffect(() => {
         const startTime = new Date(startedAt).getTime();
-        const initialElapsed = Math.floor((Date.now() - startTime) / 1000) + runtimeSeconds;
+        const initialElapsed = Math.floor((Date.now() - startTime) / 1000);
         setElapsedTime(initialElapsed);
 
         const timer = setInterval(() => {
@@ -20,7 +19,7 @@ const ProjectTimer: React.FC<ProjectTimerProps> = ({ startedAt, runtimeSeconds }
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [startedAt, runtimeSeconds]);
+    }, [startedAt]);
 
     return (
         <div className="project-timer">

@@ -113,7 +113,6 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
                 {isProjectActive() && project.startedAt && (
                     <ProjectTimer
                         startedAt={project.startedAt}
-                        runtimeSeconds={project.runtimeInSeconds}
                     />
                 )}
             </div>
