@@ -3,14 +3,14 @@ import { formatTime } from '../utils/timeUtils';
 import './ProjectTimer.css';
 
 interface ProjectTimerProps {
-    startedAt: string;
+    startedAt: Date;
 }
 
 const ProjectTimer: React.FC<ProjectTimerProps> = ({ startedAt }) => {
     const [elapsedTime, setElapsedTime] = useState<number>(0);
 
     useEffect(() => {
-        const startTime = new Date(startedAt).getTime();
+        const startTime = startedAt.getTime();
         const initialElapsed = Math.floor((Date.now() - startTime) / 1000);
         setElapsedTime(initialElapsed);
 

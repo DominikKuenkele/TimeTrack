@@ -23,10 +23,18 @@ export const projectService = {
     getProjectsLike: async (page = 1, perPage = 20, searchTerm = ""): Promise<PaginatedProjects> => {
         try {
             const response = await api.get<PaginatedProjects>(`/projects/?page=${page}&per_page=${perPage}&search_term=${searchTerm}`);
+
             if (response.data.activeProject === undefined) {
                 response.data.activeProject = null;
+            } else {
+                response.data.activeProject = mapProject(response.data.activeProject!)
             }
-            return response.data;
+
+
+            return {
+                ...response.data,
+                projects: response.data.projects.map(project => mapProject(project)),
+            };;
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
@@ -37,7 +45,7 @@ export const projectService = {
         try {
             const encodedName = encodeURIComponent(projectName);
             const response = await api.post<Project>(`/projects/${encodedName}`);
-            return response.data;
+            return mapProject(response.data);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
@@ -58,7 +66,7 @@ export const projectService = {
         try {
             const encodedName = encodeURIComponent(projectName);
             const response = await api.post<Project>(`/projects/${encodedName}/start`);
-            return response.data;
+            return mapProject(response.data);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
@@ -69,7 +77,7 @@ export const projectService = {
         try {
             const encodedName = encodeURIComponent(projectName);
             const response = await api.post<Project>(`/projects/${encodedName}/stop`);
-            return response.data;
+            return mapProject(response.data);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
@@ -125,5 +133,14 @@ export const userService = {
         }
     },
 };
+
+function mapProject(oldProject: Project): Project {
+    const project: Project = {
+        ...oldProject,
+        startedAt: oldProject.startedAt ? new Date(oldProject.startedAt) : null,
+    };
+
+    return project
+}
 
 export default api; 

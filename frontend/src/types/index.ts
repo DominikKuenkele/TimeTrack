@@ -2,7 +2,7 @@ export interface Project {
     id: number;
     name: string;
     runtimeInSeconds: number;
-    startedAt: string | null;
+    startedAt: Date | null;
 }
 
 export interface PaginatedProjects {
