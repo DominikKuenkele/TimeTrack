@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { formatTime } from '../utils/timeUtils';
+import { formatTime } from '../../utils/timeUtils';
 import './ProjectTimer.css';
 
 interface ProjectTimerProps {

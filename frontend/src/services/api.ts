@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
-import { PaginatedProjects, Project } from '../types';
+import { Activity, PaginatedProjects, Project } from '../types';
+import { dateToDayString } from '../utils/dateUtils';
 
 const API_URL = import.meta.env.VITE_API_URL;
 const NODE_ENV = import.meta.env.VITE_NODE_ENV;
@@ -85,6 +86,21 @@ export const projectService = {
     },
 };
 
+export const activityService = {
+    getActivities: async (startDay: Date, endDay: Date | null): Promise<Activity[]> => {
+        try {
+            const response = await api.get<Activity[]>(`/activities/?startDay=${dateToDayString(startDay)}&endDay=${dateToDayString(endDay)}`);
+
+            return {
+                ...response.data.map(activity => mapActivity(activity)),
+            };;
+        } catch (error) {
+            logErrorIfNeeded(error);
+            throw error;
+        }
+    },
+};
+
 export const userService = {
     login: async (username = "", password = ""): Promise<void> => {
         try {
@@ -141,6 +157,16 @@ function mapProject(oldProject: Project): Project {
     };
 
     return project
+}
+
+function mapActivity(oldActivity: Activity): Activity {
+    const activity: Activity = {
+        ...oldActivity,
+        startedAt: oldActivity.startedAt ? new Date(oldActivity.startedAt) : null,
+        endedAt: oldActivity.endedAt ? new Date(oldActivity.endedAt) : null
+    };
+
+    return activity
 }
 
 export default api; 

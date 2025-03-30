@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Project } from '../types';
-import Pagination from './Pagination';
+import { Project } from '../../types';
+import Pagination from '../Pagination';
 import ProjectItem from './ProjectItem';
 import './ProjectList.css';
 

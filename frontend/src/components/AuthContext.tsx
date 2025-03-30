@@ -3,6 +3,7 @@ import { userService } from '../services/api';
 
 interface AuthContextType {
     isLoggedIn: boolean;
+    isLoading: boolean;
     login: () => void;
     logout: () => Promise<void>;
 }
@@ -11,14 +12,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const validateSession = async (): Promise<void> => {
         try {
+            setIsLoading(true);
             const validSession = await userService.validate();
             setIsLoggedIn(validSession);
         } catch (err: unknown) {
             console.log(err)
             setIsLoggedIn(false);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -37,7 +42,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     return (
-        <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
+        <AuthContext.Provider value={{ isLoggedIn, isLoading, login, logout }}>
             {children}
         </AuthContext.Provider>
     );

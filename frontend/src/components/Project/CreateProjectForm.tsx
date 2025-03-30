@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { projectService } from '../services/api';
-import { extractErrorMessage } from '../utils/errorUtils';
+import { projectService } from '../../services/api';
+import { extractErrorMessage } from '../../utils/errorUtils';
 import './CreateProjectForm.css';
 
 interface CreateProjectFormProps {

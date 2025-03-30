@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { projectService } from '../services/api';
-import { Project } from '../types';
-import { extractErrorMessage } from '../utils/errorUtils';
-import { formatRuntime } from '../utils/timeUtils';
+import { projectService } from '../../services/api';
+import { Project } from '../../types';
+import { extractErrorMessage } from '../../utils/errorUtils';
+import { formatRuntime } from '../../utils/timeUtils';
 import './ProjectItem.css';
 import ProjectTimer from './ProjectTimer';
 

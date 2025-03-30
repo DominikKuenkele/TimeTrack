@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { projectService } from '../services/api';
-import { Project } from '../types';
-import { extractErrorMessage } from '../utils/errorUtils';
-import { useAuth } from './AuthContext';
+import { projectService } from '../../services/api';
+import { Project } from '../../types';
+import { extractErrorMessage } from '../../utils/errorUtils';
+import { useAuth } from '../AuthContext';
+import SearchForm from '../SearchForm';
 import CreateProjectForm from './CreateProjectForm';
 import ProjectList from './ProjectList';
 import './ProjectOverview.css';
-import SearchForm from './SearchForm';
 
 
 const ProjectOverview: React.FC = () => {
