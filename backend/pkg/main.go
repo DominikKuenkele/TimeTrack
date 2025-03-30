@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/DominikKuenkele/TimeTrack/activities"
 	"github.com/DominikKuenkele/TimeTrack/authentification"
 	"github.com/DominikKuenkele/TimeTrack/libraries/config"
 	"github.com/DominikKuenkele/TimeTrack/libraries/database"
@@ -44,19 +45,26 @@ func main() {
 	server := server.NewServer("", "80", cfg.FrontendAddress, logger)
 	server.AddHandler("/", defaultHandler(logger))
 
-	authenticator, err := authentification.BuildAuthenticator(logger, database, cfg.EnableCreateUser)
+	authenticatorAPI, err := authentification.BuildAuthenticator(logger, database, cfg.EnableCreateUser)
 	if err != nil {
 		logger.Error(err.Error())
 		return
 	}
-	server.AddHandler(authentification.Prefix+"/", authenticator.HTTPHandler)
+	server.AddHandler(authentification.Prefix+"/", authenticatorAPI.HTTPHandler)
 
-	project, err := projects.BuildProject(logger, database)
+	projectAPI, err := projects.BuildProject(logger, database)
 	if err != nil {
 		logger.Error(err.Error())
 		return
 	}
-	server.AddHandler(projects.Prefix+"/", authenticator.Authenticate(project.HTTPHandler))
+	server.AddHandler(projects.Prefix+"/", authenticatorAPI.Authenticate(projectAPI.HTTPHandler))
+
+	activityAPI, err := activities.BuildActivity(logger, database)
+	if err != nil {
+		logger.Error(err.Error())
+		return
+	}
+	server.AddHandler(activities.Prefix+"/", authenticatorAPI.Authenticate(activityAPI.HTTPHandler))
 
 	if err := server.Start(); err != nil {
 		logger.Error(err.Error())

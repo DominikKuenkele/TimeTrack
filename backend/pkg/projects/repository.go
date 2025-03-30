@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/database"
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
@@ -19,6 +20,7 @@ type Repository interface {
 	DeleteProject(userID, name string) error
 	StartProject(userID, name string) error
 	StopProject(userID, name string) error
+	GetActivities(userID string, day time.Time) (Activities, error)
 }
 
 type repositoryImpl struct {
@@ -116,7 +118,6 @@ func (r *repositoryImpl) GetProjectsLike(userID, searchTerm string) ([]*Project,
 
 	projects := make([]*Project, 0, len(projectOrder))
 	for _, projectID := range projectOrder {
-		projectMap[projectID].DatesToLocal()
 		projectMap[projectID].RuntimeInSeconds = projectMap[projectID].Activities.CalculateRuntime()
 		projects = append(projects, projectMap[projectID])
 	}
@@ -128,9 +129,12 @@ func (r *repositoryImpl) readActivities(projects map[int]*Project) error {
 	projectIDs := utilitites.MapKeysToSlice(projects)
 
 	rows, err := r.database.Query(
-		"SELECT "+columnsActivitiesActivityID+", "+columnsActivitiesProjectID+", "+columnsActivitiesStartedAt+", "+columnsActivitiesEndedAt+", "+columnsActivitiesCreatedAt+", "+columnsActivitiesUpdatedAt+
-			" FROM "+tableActvities+
-			" WHERE "+columnsActivitiesProjectID+"=ANY($1);",
+		"SELECT"+
+			" a."+columnsActivitiesActivityID+", a."+columnsActivitiesProjectID+", a."+columnsActivitiesStartedAt+", a."+columnsActivitiesEndedAt+", a."+columnsActivitiesCreatedAt+", a."+columnsActivitiesUpdatedAt+
+			", p."+columnProjectsName+
+			" FROM "+tableActvities+" a"+
+			" LEFT JOIN "+tableProjects+" p ON a."+columnsActivitiesProjectID+"=p."+columnProjectsProjectID+
+			" WHERE a."+columnsActivitiesProjectID+"=ANY($1);",
 		pq.Array(projectIDs),
 	)
 	if err != nil {
@@ -139,19 +143,21 @@ func (r *repositoryImpl) readActivities(projects map[int]*Project) error {
 	defer rows.Close()
 
 	for rows.Next() {
+		var projectID int
 		activity := &DbActivity{}
 		if err := rows.Scan(
 			&activity.ID,
-			&activity.ProjectID,
+			&projectID,
 			&activity.StartedAt,
 			&activity.EndedAt,
 			&activity.CreatedAt,
 			&activity.UpdatedAt,
+			&activity.ProjectName,
 		); err != nil {
 			return r.logger.LogAndAbstractError("database error", "Error scanning activities: %+v", err)
 		}
 
-		projects[activity.ProjectID].Activities = append(projects[activity.ProjectID].Activities, activity.ToDomain())
+		projects[projectID].Activities = append(projects[projectID].Activities, activity.ToDomain())
 	}
 
 	return nil
@@ -202,7 +208,6 @@ func (r *repositoryImpl) GetProject(userID, name string) (*Project, error) {
 		return nil, err
 	}
 
-	project.DatesToLocal()
 	project.RuntimeInSeconds = project.Activities.CalculateRuntime()
 
 	return project, nil
@@ -230,7 +235,6 @@ func (r *repositoryImpl) GetRunningProject(userID string) (*Project, error) {
 		return nil, err
 	}
 
-	project.DatesToLocal()
 	project.RuntimeInSeconds = project.Activities.CalculateRuntime()
 
 	return project, nil
@@ -376,4 +380,46 @@ func (r *repositoryImpl) stopProjectWithTx(tx *sql.Tx, userID, name string) erro
 	}
 
 	return nil
+}
+
+func (r *repositoryImpl) GetActivities(userID string, day time.Time) (Activities, error) {
+	rows, err := r.database.Query(
+		"SELECT"+
+			" a."+columnsActivitiesActivityID+", a."+columnsActivitiesStartedAt+", a."+columnsActivitiesEndedAt+", a."+columnsActivitiesCreatedAt+", a."+columnsActivitiesUpdatedAt+
+			", p."+columnProjectsName+
+			" FROM "+tableActvities+" a"+
+			" LEFT JOIN "+tableProjects+" p ON a."+columnsActivitiesProjectID+"=p."+columnProjectsProjectID+
+			" WHERE a."+columnsActivitiesStartedAt+"::date = $1 AND p."+columnProjectsUserID+"=$2"+
+			" ORDER BY a."+columnsActivitiesStartedAt+" ASC;",
+		day.Format("2006-01-02"),
+		userID,
+	)
+	if err != nil {
+		switch {
+		case errors.As(err, &database.NoRowsError{}):
+			return nil, nil
+		default:
+			return nil, r.logger.LogAndAbstractError("database error", "Error getting activities: %+v", err)
+		}
+	}
+	defer rows.Close()
+
+	activitySlice := Activities{}
+	for rows.Next() {
+		activity := &DbActivity{}
+		if err := rows.Scan(
+			&activity.ID,
+			&activity.StartedAt,
+			&activity.EndedAt,
+			&activity.CreatedAt,
+			&activity.UpdatedAt,
+			&activity.ProjectName,
+		); err != nil {
+			return nil, r.logger.LogAndAbstractError("database error", "Error scanning activities: %+v", err)
+		}
+
+		activitySlice = append(activitySlice, activity.ToDomain())
+	}
+
+	return activitySlice, nil
 }

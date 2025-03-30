@@ -12,53 +12,8 @@ type Project struct {
 	RuntimeInSeconds uint64     `json:"runtimeInSeconds"`
 	StartedAt        *time.Time `json:"startedAt"`
 	Activities       Activities `json:"activities"`
-	CreatedAt        *time.Time `json:"createdAt"`
-	UpdatedAt        *time.Time `json:"updatedAt"`
-}
-
-func (p *Project) DatesToLocal() {
-	if p.CreatedAt != nil {
-		*p.CreatedAt = p.CreatedAt.Local()
-	}
-	if p.UpdatedAt != nil {
-		*p.UpdatedAt = p.UpdatedAt.Local()
-	}
-}
-
-type Activity struct {
-	ID        int        `json:"id"`
-	StartedAt *time.Time `json:"startedAt"`
-	EndedAt   *time.Time `json:"endedAt"`
-	CreatedAt *time.Time `json:"createdAt"`
-	UpdatedAt *time.Time `json:"updatesAt"`
-}
-
-func (a *Activity) DatesToLocal() {
-	if a.StartedAt != nil {
-		*a.StartedAt = a.StartedAt.Local()
-	}
-	if a.EndedAt != nil {
-		*a.EndedAt = a.EndedAt.Local()
-	}
-	if a.CreatedAt != nil {
-		*a.CreatedAt = a.CreatedAt.Local()
-	}
-	if a.UpdatedAt != nil {
-		*a.UpdatedAt = a.UpdatedAt.Local()
-	}
-}
-
-type Activities []*Activity
-
-func (a Activities) CalculateRuntime() uint64 {
-	var runtime uint64
-	for _, activity := range a {
-		if activity.StartedAt != nil && activity.EndedAt != nil {
-			runtime += uint64(activity.EndedAt.Sub(*activity.StartedAt).Seconds())
-		}
-	}
-
-	return runtime
+	CreatedAt        time.Time  `json:"createdAt"`
+	UpdatedAt        time.Time  `json:"updatedAt"`
 }
 
 type PaginatedProjects struct {
@@ -74,42 +29,75 @@ type DbProject struct {
 	ID        int
 	UserID    string
 	Name      string
-	StartedAt *time.Time
-	CreatedAt *time.Time
-	UpdatedAt *time.Time
+	StartedAt sql.NullTime
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (p *DbProject) ToDomain() *Project {
-	return &Project{
+	project := &Project{
 		ID:        p.ID,
 		UserID:    p.UserID,
 		Name:      p.Name,
-		StartedAt: p.StartedAt,
-		CreatedAt: p.CreatedAt,
-		UpdatedAt: p.UpdatedAt,
+		CreatedAt: p.CreatedAt.Local(),
+		UpdatedAt: p.UpdatedAt.Local(),
 	}
+
+	if p.StartedAt.Valid {
+		localStartedAt := p.StartedAt.Time.Local()
+		project.StartedAt = &localStartedAt
+	}
+
+	return project
+}
+
+type Activity struct {
+	ID          int        `json:"id"`
+	ProjectName string     `json:"projectName"`
+	StartedAt   *time.Time `json:"startedAt"`
+	EndedAt     *time.Time `json:"endedAt"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatesAt"`
+}
+
+type Activities []*Activity
+
+func (a Activities) CalculateRuntime() uint64 {
+	var runtime uint64
+	for _, activity := range a {
+		if activity.StartedAt != nil && activity.EndedAt != nil {
+			runtime += uint64(activity.EndedAt.Sub(*activity.StartedAt).Seconds())
+		}
+	}
+
+	return runtime
 }
 
 type DbActivity struct {
-	ID        int
-	ProjectID int
-	StartedAt sql.NullTime
-	EndedAt   sql.NullTime
-	CreatedAt *time.Time
-	UpdatedAt *time.Time
+	ID          int
+	ProjectName string
+	StartedAt   sql.NullTime
+	EndedAt     sql.NullTime
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 func (a *DbActivity) ToDomain() *Activity {
 	activity := &Activity{
-		ID:        a.ID,
-		CreatedAt: a.CreatedAt,
-		UpdatedAt: a.UpdatedAt,
+		ID:          a.ID,
+		ProjectName: a.ProjectName,
+		CreatedAt:   a.CreatedAt.Local(),
+		UpdatedAt:   a.UpdatedAt.Local(),
 	}
+
 	if a.StartedAt.Valid {
-		activity.StartedAt = &a.StartedAt.Time
+		localStartedAt := a.StartedAt.Time.Local()
+		activity.StartedAt = &localStartedAt
 	}
+
 	if a.EndedAt.Valid {
-		activity.EndedAt = &a.EndedAt.Time
+		localEndedAt := a.EndedAt.Time.Local()
+		activity.EndedAt = &localEndedAt
 	}
 
 	return activity

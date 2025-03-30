@@ -14,6 +14,13 @@ export interface PaginatedProjects {
     totalPages: number;
 }
 
+export interface Activity {
+    id: number;
+    projectName: string;
+    startedAt: Date | null;
+    endedAt: Date | null;
+}
+
 export interface ApiResponse<T> {
     data: T;
     message?: string;
