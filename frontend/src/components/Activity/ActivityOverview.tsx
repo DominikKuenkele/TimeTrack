@@ -9,7 +9,7 @@ import './ActivityOverview.css';
 
 
 const ActivityOverview: React.FC = () => {
-    const [activities, setActivities] = useState<Activity[]>([]);
+    const [_, setActivities] = useState<Activity[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     const [startDay, setStartDay] = useState<Date>(new Date());
