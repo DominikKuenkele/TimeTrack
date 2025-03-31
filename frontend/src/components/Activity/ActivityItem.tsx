@@ -10,11 +10,6 @@ interface ActivityItemProps {
 
 const ActivityItem: React.FC<ActivityItemProps> = ({ activity, totalRuntime }) => {
     const [hovered, setHovered] = useState(false);
-    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
-    const handleMouseMove = (event: React.MouseEvent) => {
-        setMousePosition({ x: event.clientX, y: event.clientY });
-    };
 
     const runtime = getActivityDuration(activity);
 
@@ -23,7 +18,6 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, totalRuntime }) =
             className={'activity-item'} data-id={activity.id} style={{ height: `max(60px, ${runtime / 1000}px)` }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
-            onMouseMove={handleMouseMove}
         >
             <h3>{activity.projectName}</h3>
             <div className="activity-runtime">
