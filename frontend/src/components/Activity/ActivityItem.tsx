@@ -15,7 +15,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, totalRuntime }) =
 
     return (
         <div
-            className={'activity-item'} data-id={activity.id} style={{ height: `max(60px, ${runtime / 100}px)` }}
+            className={'activity-item'} data-id={activity.id} style={{ height: `max(60px, ${runtime / 30}px)` }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
