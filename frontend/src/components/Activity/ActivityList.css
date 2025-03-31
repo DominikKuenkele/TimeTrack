@@ -1,0 +1,17 @@
+.activity-list {
+    position: relative;
+    list-style-type: none;
+    padding: 0;
+}
+
+.activity-list-container::after {
+    display: none;
+}
+
+.no-activities {
+    text-align: center;
+    color: #7f8c8d;
+    padding: 20px;
+    font-size: 1.1rem;
+    font-style: italic;
+}

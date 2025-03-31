@@ -2,24 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { activityService } from '../../services/api';
 import { Activity } from '../../types';
-import { dateToDayString } from '../../utils/dateUtils';
 import { extractErrorMessage } from '../../utils/errorUtils';
+import { dateToDayString } from '../../utils/timeUtils';
 import { useAuth } from '../AuthContext';
+import ActivityList from './ActivityList';
 import './ActivityOverview.css';
 
 
 const ActivityOverview: React.FC = () => {
-    const [_, setActivities] = useState<Activity[]>([]);
+    const [activities, setActivities] = useState<Activity[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     const [startDay, setStartDay] = useState<Date>(new Date());
-    const [endDay, setEndDay] = useState<Date>(new Date());
 
     const { isLoggedIn, isLoading } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
-        console.log(isLoading, isLoggedIn);
         if (!isLoading && !isLoggedIn) {
             navigate('/login');
         }
@@ -27,7 +26,7 @@ const ActivityOverview: React.FC = () => {
 
     useEffect(() => {
         fetchActivities();
-    }, [startDay, endDay])
+    }, [startDay])
 
     const fetchActivities = async (): Promise<void> => {
         if (!isLoggedIn) {
@@ -35,7 +34,7 @@ const ActivityOverview: React.FC = () => {
         }
 
         try {
-            const data = await activityService.getActivities(startDay, endDay);
+            const data = await activityService.getActivities(startDay);
 
             setActivities(data);
             setError(null);
@@ -51,29 +50,27 @@ const ActivityOverview: React.FC = () => {
 
     return (
         <div className="activity-overview">
-            <h2>Projects</h2>
+            <h2>Activities</h2>
 
             <div className="activity-overview-header">
-                <input
-                    type="date"
-                    value={dateToDayString(startDay)}
-                    onChange={(e) => setStartDay(new Date(e.target.value))}
-                    placeholder="Select start date"
-                />
-                <input
-                    type="date"
-                    value={dateToDayString(endDay)}
-                    onChange={(e) => setEndDay(new Date(e.target.value))}
-                    placeholder="Select end date"
-                />
+                <div className='activity-date-picker'>
+                    <button onClick={() => setStartDay(new Date(startDay.getTime() - 86400000))}>⮜</button>
+                    <input
+                        type="date"
+                        value={dateToDayString(startDay)}
+                        onChange={(e) => setStartDay(new Date(e.target.value))}
+                        placeholder="Select start date"
+                    />
+                    <button onClick={() => setStartDay(new Date(startDay.getTime() + 86400000))}>⮞</button>
+                </div>
             </div>
 
             {error && <div className="activity-overview-error">{error}</div>}
 
-            {/* <ActivityList
+            <ActivityList
                 activities={activities}
-            /> */}
-        </div>
+            />
+        </div >
     );
 };
 

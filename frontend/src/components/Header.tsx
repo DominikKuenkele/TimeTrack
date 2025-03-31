@@ -19,6 +19,8 @@ const Header: React.FC = () => {
                     <Link to="/">TimeTrack</Link>
                 </h1>
                 <nav>
+                    <Link to="/projects">Projects</Link>
+                    <Link to="/activities">Activities</Link>
                     {isLoggedIn
                         ? <button onClick={logoutAction}>Logout</button>
                         : <Link to="/login">Login</Link>

@@ -21,6 +21,12 @@ export interface Activity {
     endedAt: Date | null;
 }
 
+export const getActivityDuration = (activity: Activity): number => {
+    return activity.endedAt && activity.startedAt
+        ? Math.floor((activity.endedAt.getTime() - activity.startedAt.getTime()) / 1000)
+        : 0;
+}
+
 export interface ApiResponse<T> {
     data: T;
     message?: string;
