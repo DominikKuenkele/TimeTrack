@@ -21,7 +21,7 @@ export interface Activity {
     endedAt: Date | null;
 }
 
-export const getActivityDuration = (activity: Activity): number => {
+export const getActivityDurationInSeconds = (activity: Activity): number => {
     return activity.endedAt && activity.startedAt
         ? Math.floor((activity.endedAt.getTime() - activity.startedAt.getTime()) / 1000)
         : 0;
