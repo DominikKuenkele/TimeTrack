@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, getActivityDuration } from '../../types';
+import { Activity, getActivityDurationInSeconds } from '../../types';
 import { formatDateTime, formatRuntime } from '../../utils/timeUtils';
 import './ActivityItem.css';
 
@@ -11,11 +11,11 @@ interface ActivityItemProps {
 const ActivityItem: React.FC<ActivityItemProps> = ({ activity, totalRuntime }) => {
     const [hovered, setHovered] = useState(false);
 
-    const runtime = getActivityDuration(activity);
+    const runtime = getActivityDurationInSeconds(activity);
 
     return (
         <div
-            className={'activity-item'} data-id={activity.id} style={{ height: `max(60px, ${runtime / 1000}px)` }}
+            className={'activity-item'} data-id={activity.id} style={{ height: `max(60px, ${runtime / 100}px)` }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >

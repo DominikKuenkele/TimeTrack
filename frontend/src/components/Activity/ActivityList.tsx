@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, getActivityDuration } from '../../types';
+import { Activity, getActivityDurationInSeconds } from '../../types';
 import ActivityItem from './ActivityItem';
 import './ActivityList.css';
 
@@ -11,7 +11,7 @@ const ActivityList: React.FC<ActivityListListProps> = ({
     activities,
 }) => {
     const totalRuntimeMap = activities.reduce((acc, activity) => {
-        acc[activity.projectName] = (acc[activity.projectName] || 0) + getActivityDuration(activity);
+        acc[activity.projectName] = (acc[activity.projectName] || 0) + getActivityDurationInSeconds(activity);
         return acc;
     }, {} as Record<string, number>);
 
