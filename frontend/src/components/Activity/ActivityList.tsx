@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, getActivityDurationInSeconds } from '../../types';
+import { Activity, getActivityDurationInSeconds, getBreakTimeInSeconds } from '../../types';
 import ActivityItem from './ActivityItem';
 import './ActivityList.css';
 
@@ -36,8 +36,13 @@ const ActivityList: React.FC<ActivityListListProps> = ({
     ) : (
         <>
             <ul className={'activity-list'}>
-                {activities.map((activity) => (
-                    <li key={`activity-${activity.id}`}>
+                {activities.map((activity, index) => {
+                    const breakTime = activities[index + 1] && getBreakTimeInSeconds(activity, activities[index + 1]);
+
+                    return <li
+                        key={`activity-${activity.id}`}
+                        style={{ marginBottom: `${breakTime / 30}px` }}
+                    >
                         <ActivityItem
                             activity={activity}
                             totalRuntime={totalRuntimeMap[activity.projectName]}
@@ -46,7 +51,7 @@ const ActivityList: React.FC<ActivityListListProps> = ({
                             color={colorMap[activity.projectName]}
                         />
                     </li>
-                ))}
+                })}
             </ul>
         </>
     )

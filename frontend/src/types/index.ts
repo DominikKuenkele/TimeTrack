@@ -27,6 +27,12 @@ export const getActivityDurationInSeconds = (activity: Activity): number => {
         : 0;
 }
 
+export const getBreakTimeInSeconds = (previous: Activity, next: Activity): number => {
+    return next.startedAt && previous.endedAt
+        ? Math.floor((next.startedAt.getTime() - previous.endedAt.getTime()) / 1000)
+        : 0;
+}
+
 export interface ApiResponse<T> {
     data: T;
     message?: string;
