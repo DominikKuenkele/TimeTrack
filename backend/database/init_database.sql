@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS projects (
     started_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
-    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
+    UNIQUE(user_id, name)
 );
 CREATE TRIGGER update_projects_modtime BEFORE
 UPDATE ON projects FOR EACH ROW EXECUTE FUNCTION update_modified_column();

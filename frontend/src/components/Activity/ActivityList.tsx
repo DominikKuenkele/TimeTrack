@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Activity, getActivityDurationInSeconds } from '../../types';
 import ActivityItem from './ActivityItem';
 import './ActivityList.css';
@@ -7,13 +7,29 @@ interface ActivityListListProps {
     activities: Activity[]
 }
 
+
+const colors = [
+    '#FFDFBA', '#FFB3BA', '#BAFFC9', '#BAE1FF', '#E0BBE4',
+    '#957DAD', '#D291BC', '#FEC8D8', '#FFABAB', '#F49AC2'
+];
+
 const ActivityList: React.FC<ActivityListListProps> = ({
     activities,
 }) => {
+    const [selectedProject, setSelectedProject] = useState<string>("");
+
     const totalRuntimeMap = activities.reduce((acc, activity) => {
         acc[activity.projectName] = (acc[activity.projectName] || 0) + getActivityDurationInSeconds(activity);
         return acc;
     }, {} as Record<string, number>);
+
+    const colorMap = activities.reduce((acc, activity) => {
+        if (!acc[activity.projectName]) {
+            const colorIndex = Object.keys(acc).length % colors.length;
+            acc[activity.projectName] = colors[colorIndex];
+        }
+        return acc;
+    }, {} as Record<string, string>);
 
     return activities.length === 0 ? (
         <div className="no-activities">No activites found.</div>
@@ -25,6 +41,9 @@ const ActivityList: React.FC<ActivityListListProps> = ({
                         <ActivityItem
                             activity={activity}
                             totalRuntime={totalRuntimeMap[activity.projectName]}
+                            isSelectedProject={selectedProject === activity.projectName}
+                            setSelectedProject={setSelectedProject}
+                            color={colorMap[activity.projectName]}
                         />
                     </li>
                 ))}

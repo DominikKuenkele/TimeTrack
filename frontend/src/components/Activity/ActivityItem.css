@@ -20,7 +20,7 @@
     z-index: 1;
 }
 
-.activity-item:hover {
+.activity-item.is-selected {
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
@@ -33,6 +33,7 @@
     font-size: 0.9rem;
     color: #666;
     padding: 3px 0;
+    font-family: monospace;
 }
 
 .activity-total-runtime {
@@ -42,9 +43,12 @@
     border-radius: 3px;
     transition: opacity 0.2s;
     pointer-events: none;
+    position: absolute;
+    top: 50%;
+    right: 50%;
+    transform: translate(-50%, -50%);
 }
 
-/* Mobile Responsive Styles */
 @media (max-width: 768px) {
     .activity-item {
         flex-direction: column;

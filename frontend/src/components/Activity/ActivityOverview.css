@@ -76,6 +76,11 @@
     width: fit-content;
 }
 
+.activity-overview-total-runtime {
+    line-height: 1.4;
+    font-size: 1.3em;
+}
+
 .activity-overview-header {
     display: flex;
     justify-content: center;
