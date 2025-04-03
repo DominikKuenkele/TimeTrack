@@ -30,7 +30,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, totalRuntime, isS
             )}
             <div className="activity-runtime">
                 <div>
-                    {activity.startedAt && formatDateTime(activity.startedAt)}
+                    {formatDateTime(activity.startedAt)}
                 </div>
                 <div>
                     {activity.endedAt && formatDateTime(activity.endedAt)}

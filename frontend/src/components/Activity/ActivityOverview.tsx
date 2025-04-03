@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { activityService } from '../../services/api';
-import { Activity, getActivityDurationInSeconds } from '../../types';
+import { Activity, getBreakTimeInSeconds } from '../../types';
 import { extractErrorMessage } from '../../utils/errorUtils';
 import { dateToDayString, formatRuntime } from '../../utils/timeUtils';
 import { useAuth } from '../AuthContext';
@@ -48,9 +48,13 @@ const ActivityOverview: React.FC = () => {
         }
     };
 
-    const totalRuntime = activities.reduce((acc, activity) => {
-        return acc + getActivityDurationInSeconds(activity);
-    }, 0);
+    const totalRuntime = activities.length > 0
+        ? Math.floor(((activities[activities.length - 1].endedAt?.getTime() ?? activities[activities.length - 1].startedAt.getTime()) - activities[0].startedAt.getTime()) / 1000)
+        : 0;
+
+    const lunchBreak = activities.reduce((breakTime, activity, index) => {
+        return Math.max(breakTime, activities[index + 1] ? getBreakTimeInSeconds(activity, activities[index + 1]) : 0);
+    }, 0 as number);
 
     return (
         <div className="activity-overview">
@@ -72,7 +76,7 @@ const ActivityOverview: React.FC = () => {
             {error && <div className="activity-overview-error">{error}</div>}
 
             <div className="activity-overview-total-runtime">
-                <strong>Total Time: </strong>{formatRuntime(totalRuntime)}
+                <strong>Total Time: </strong>{formatRuntime(totalRuntime)} (Break: {formatRuntime(lunchBreak)})
             </div>
 
             <ActivityList

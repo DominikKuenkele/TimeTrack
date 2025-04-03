@@ -17,18 +17,18 @@ export interface PaginatedProjects {
 export interface Activity {
     id: number;
     projectName: string;
-    startedAt: Date | null;
+    startedAt: Date;
     endedAt: Date | null;
 }
 
 export const getActivityDurationInSeconds = (activity: Activity): number => {
-    return activity.endedAt && activity.startedAt
+    return activity.endedAt
         ? Math.floor((activity.endedAt.getTime() - activity.startedAt.getTime()) / 1000)
         : 0;
 }
 
 export const getBreakTimeInSeconds = (previous: Activity, next: Activity): number => {
-    return next.startedAt && previous.endedAt
+    return previous.endedAt
         ? Math.floor((next.startedAt.getTime() - previous.endedAt.getTime()) / 1000)
         : 0;
 }

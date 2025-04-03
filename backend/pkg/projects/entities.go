@@ -54,7 +54,7 @@ func (p *DbProject) ToDomain() *Project {
 type Activity struct {
 	ID          int        `json:"id"`
 	ProjectName string     `json:"projectName"`
-	StartedAt   *time.Time `json:"startedAt"`
+	StartedAt   time.Time  `json:"startedAt"`
 	EndedAt     *time.Time `json:"endedAt"`
 	CreatedAt   time.Time  `json:"createdAt"`
 	UpdatedAt   time.Time  `json:"updatesAt"`
@@ -65,8 +65,8 @@ type Activities []*Activity
 func (a Activities) CalculateRuntime() uint64 {
 	var runtime uint64
 	for _, activity := range a {
-		if activity.StartedAt != nil && activity.EndedAt != nil {
-			runtime += uint64(activity.EndedAt.Sub(*activity.StartedAt).Seconds())
+		if activity.EndedAt != nil {
+			runtime += uint64(activity.EndedAt.Sub(activity.StartedAt).Seconds())
 		}
 	}
 
@@ -76,7 +76,7 @@ func (a Activities) CalculateRuntime() uint64 {
 type DbActivity struct {
 	ID          int
 	ProjectName string
-	StartedAt   sql.NullTime
+	StartedAt   time.Time
 	EndedAt     sql.NullTime
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
@@ -86,13 +86,9 @@ func (a *DbActivity) ToDomain() *Activity {
 	activity := &Activity{
 		ID:          a.ID,
 		ProjectName: a.ProjectName,
+		StartedAt:   a.StartedAt.Local(),
 		CreatedAt:   a.CreatedAt.Local(),
 		UpdatedAt:   a.UpdatedAt.Local(),
-	}
-
-	if a.StartedAt.Valid {
-		localStartedAt := a.StartedAt.Time.Local()
-		activity.StartedAt = &localStartedAt
 	}
 
 	if a.EndedAt.Valid {

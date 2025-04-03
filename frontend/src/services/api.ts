@@ -161,7 +161,7 @@ function mapProject(oldProject: Project): Project {
 function mapActivity(oldActivity: Activity): Activity {
     const activity: Activity = {
         ...oldActivity,
-        startedAt: oldActivity.startedAt ? new Date(oldActivity.startedAt) : null,
+        startedAt: new Date(oldActivity.startedAt),
         endedAt: oldActivity.endedAt ? new Date(oldActivity.endedAt) : null
     };
 
