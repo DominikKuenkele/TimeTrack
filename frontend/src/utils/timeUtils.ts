@@ -34,6 +34,29 @@ export const dateToDayString = (date: Date | null) => {
     return date ? date.toISOString().split('T')[0] : ''
 }
 
+
+export const dateToString = (date: Date | null) => {
+    return date ? date.toLocaleString('de') : ''
+}
+
+export const toLocalISOString = (date: Date | null): string => {
+    if (!date) {
+        return ""
+    }
+
+    const offset = date.getTimezoneOffset();
+    const offsetHours = Math.abs(Math.floor(offset / 60));
+    const offsetMinutes = Math.abs(offset % 60);
+    const offsetSign = offset > 0 ? '-' : '+';
+
+    const offsetString = `${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;
+
+    const localDate = new Date(date.getTime() - offset * 60 * 1000);
+    const isoString = localDate.toISOString().replace('Z', offsetString);
+
+    return isoString;
+}
+
 export function formatDateTime(date: Date): string {
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');

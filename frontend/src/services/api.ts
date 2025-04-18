@@ -98,6 +98,20 @@ export const activityService = {
             throw error;
         }
     },
+    changeActivity: async (activity: Activity): Promise<void> => {
+        try {
+            const data = {
+                "projectName": activity.projectName,
+                "startedAt": activity.startedAt,
+                "endedAt": activity.endedAt
+            }
+
+            await api.post<void>(`/activities/${activity.id}`, data);
+        } catch (error) {
+            logErrorIfNeeded(error);
+            throw error;
+        }
+    },
 };
 
 export const userService = {

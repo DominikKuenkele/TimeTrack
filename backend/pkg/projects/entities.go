@@ -91,7 +91,7 @@ func (a *DbActivity) ToDomain() *Activity {
 		UpdatedAt:   a.UpdatedAt.Local(),
 	}
 
-	if a.EndedAt.Valid {
+	if a.EndedAt.Valid && !a.EndedAt.Time.IsZero() {
 		localEndedAt := a.EndedAt.Time.Local()
 		activity.EndedAt = &localEndedAt
 	}

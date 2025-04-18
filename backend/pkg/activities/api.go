@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
+	"github.com/DominikKuenkele/TimeTrack/projects"
 )
 
 const Prefix = "/activities"
@@ -32,7 +34,7 @@ func NewAPI(logger logger.Logger, activityHandler Handler) API {
 	}
 }
 
-type actionFunc func(w http.ResponseWriter, r *http.Request) error
+type actionFunc func(w http.ResponseWriter, r *http.Request, id int) error
 
 func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 	actionMap := map[string]actionFunc{
@@ -45,12 +47,28 @@ func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		err    error
+		id     int
 		action string
 	)
+
 	if len(pathSegments) > 1 {
+		idString, err := url.PathUnescape(pathSegments[1])
+		if err != nil {
+			a.sendInvalidInputResponse(w, fmt.Errorf("couldn't parse activity id '%s'", pathSegments[1]))
+			return
+		}
+
+		id, err = strconv.Atoi(idString)
+		if err != nil {
+			a.sendInvalidInputResponse(w, fmt.Errorf("couldn't parse activity id '%s'", pathSegments[1]))
+			return
+		}
+	}
+
+	if len(pathSegments) > 2 {
 		action, err = url.PathUnescape(pathSegments[2])
 		if err != nil {
-			a.sendInvalidInputResponse(w, fmt.Errorf("couldn't parse action '%s'", pathSegments[1]))
+			a.sendInvalidInputResponse(w, fmt.Errorf("couldn't parse action '%s'", pathSegments[2]))
 			return
 		}
 	}
@@ -61,7 +79,7 @@ func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = actionFunction(w, r)
+	err = actionFunction(w, r, id)
 	if err != nil {
 		a.sendInvalidInputResponse(w, err)
 	}
@@ -80,7 +98,7 @@ func (a *apiImpl) sendInvalidInputResponse(w http.ResponseWriter, err error) {
 	w.Write(jsonResponse)
 }
 
-func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request) error {
+func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, id int) error {
 	switch r.Method {
 	case http.MethodGet:
 		var (
@@ -113,6 +131,40 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request) error {
 		w.WriteHeader(http.StatusOK)
 		jsonResponse, _ := json.Marshal(activities)
 		w.Write(jsonResponse)
+	case http.MethodPost:
+		type changeActivity struct {
+			ProjectName string     `json:"projectName"`
+			StartedAt   time.Time  `json:"startedAt"`
+			EndedAt     *time.Time `json:"endedAt"`
+		}
+
+		var changeData changeActivity
+		if err := json.NewDecoder(r.Body).Decode(&changeData); err != nil {
+			return errors.New("error parsing parameters")
+		}
+
+		if changeData.ProjectName == "" {
+			return errors.New("projectName must be present")
+		}
+
+		if changeData.StartedAt.IsZero() {
+			return errors.New("startedAt must be present")
+		}
+
+		if changeData.EndedAt != nil && changeData.EndedAt.Before(changeData.StartedAt) {
+			return errors.New("startedAt must be before endedAt")
+		}
+
+		if err := a.activityHandler.ChangeActivity(r.Context(), projects.Activity{
+			ID:          id,
+			ProjectName: changeData.ProjectName,
+			StartedAt:   changeData.StartedAt,
+			EndedAt:     changeData.EndedAt,
+		}); err != nil {
+			return err
+		}
+
+		w.WriteHeader(http.StatusOK)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}

@@ -18,6 +18,8 @@ const ActivityOverview: React.FC = () => {
     const { isLoggedIn, isLoading } = useAuth();
     const navigate = useNavigate();
 
+    const [updateProjects, setUpdateActivities] = useState<boolean>(true);
+
     useEffect(() => {
         if (!isLoading && !isLoggedIn) {
             navigate('/login');
@@ -26,7 +28,7 @@ const ActivityOverview: React.FC = () => {
 
     useEffect(() => {
         fetchActivities();
-    }, [startDay])
+    }, [startDay, updateProjects])
 
     const fetchActivities = async (): Promise<void> => {
         if (!isLoggedIn) {
@@ -45,6 +47,8 @@ const ActivityOverview: React.FC = () => {
             );
             setError(`Error: ${errorMessage}`);
             console.error(err);
+        } finally {
+            setUpdateActivities(false);
         }
     };
 
@@ -81,6 +85,7 @@ const ActivityOverview: React.FC = () => {
 
             <ActivityList
                 activities={activities}
+                setUpdateActivities={setUpdateActivities}
             />
         </div >
     );

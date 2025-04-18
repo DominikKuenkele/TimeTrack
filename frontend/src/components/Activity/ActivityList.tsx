@@ -5,6 +5,7 @@ import './ActivityList.css';
 
 interface ActivityListListProps {
     activities: Activity[]
+    setUpdateActivities: (update: boolean) => void
 }
 
 
@@ -15,6 +16,7 @@ const colors = [
 
 const ActivityList: React.FC<ActivityListListProps> = ({
     activities,
+    setUpdateActivities,
 }) => {
     const [selectedProject, setSelectedProject] = useState<string>("");
 
@@ -49,6 +51,7 @@ const ActivityList: React.FC<ActivityListListProps> = ({
                             isSelectedProject={selectedProject === activity.projectName}
                             setSelectedProject={setSelectedProject}
                             color={colorMap[activity.projectName]}
+                            setUpdateActivities={setUpdateActivities}
                         />
                     </li>
                 })}

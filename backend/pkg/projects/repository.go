@@ -21,6 +21,7 @@ type Repository interface {
 	StartProject(userID, name string) error
 	StopProject(userID, name string) error
 	GetActivities(userID string, day time.Time) (Activities, error)
+	ChangeActivity(userID string, activity Activity) error
 }
 
 type repositoryImpl struct {
@@ -422,4 +423,31 @@ func (r *repositoryImpl) GetActivities(userID string, day time.Time) (Activities
 	}
 
 	return activitySlice, nil
+}
+
+func (r *repositoryImpl) ChangeActivity(userID string, activity Activity) error {
+	project, err := r.GetProject(userID, activity.ProjectName)
+	if err != nil {
+		return err
+	}
+
+	res, err := r.database.Exec(
+		"UPDATE "+tableActvities+
+			" SET "+columnsActivitiesProjectID+"=$1, "+columnsActivitiesStartedAt+"=$2, "+columnsActivitiesEndedAt+"=$3"+
+			" WHERE "+columnsActivitiesActivityID+"=$4;",
+		project.ID, activity.StartedAt, activity.EndedAt, activity.ID)
+	if err != nil {
+		return r.logger.LogAndAbstractError("database error", "Couldn't change activity: %+v", err)
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return r.logger.LogAndAbstractError("database error", "Couldn't change activity: %+v", err)
+	}
+
+	if rowsAffected == 0 {
+		return r.logger.LogAndAbstractError("database error", "activity '%d' not found", activity.ID)
+	}
+
+	return nil
 }

@@ -12,6 +12,7 @@ import (
 
 type Handler interface {
 	GetActivities(ctx context.Context, startDay, endDay time.Time) (projects.Activities, error)
+	ChangeActivity(ctx context.Context, activity projects.Activity) error
 }
 
 type handlerImpl struct {
@@ -46,4 +47,8 @@ func (h *handlerImpl) GetActivities(ctx context.Context, startDay, endDay time.T
 	}
 
 	return activities, nil
+}
+
+func (h *handlerImpl) ChangeActivity(ctx context.Context, activity projects.Activity) error {
+	return h.repository.ChangeActivity(user.FromContext(ctx), activity)
 }
