@@ -73,6 +73,60 @@ func (a Activities) CalculateRuntime() uint64 {
 	return runtime
 }
 
+type DailyActivities struct {
+	Activities Activities `json:"activities"`
+	Breaktime  uint64     `json:"breaktime"`
+	Worktime   uint64     `json:"worktime"`
+}
+
+func (d *DailyActivities) CalculateWorktime() {
+	if len(d.Activities) == 0 {
+		d.Worktime = 0
+		return
+	}
+
+	startedAt := d.Activities[0].StartedAt
+	endedAt := d.Activities[0].EndedAt
+	for i := len(d.Activities) - 1; i >= 0; i-- {
+		if d.Activities[i].EndedAt != nil {
+			endedAt = d.Activities[i].EndedAt
+			break
+		}
+	}
+
+	if endedAt == nil {
+		d.Worktime = 0
+		return
+	}
+
+	d.Worktime = uint64(endedAt.Sub(startedAt).Seconds())
+}
+
+func (d *DailyActivities) CalculateBreaktime() {
+	if len(d.Activities) < 2 {
+		d.Breaktime = 0
+		return
+	}
+
+	var maxBreak uint64
+	for i := 1; i < len(d.Activities); i++ {
+		prev := d.Activities[i-1]
+		curr := d.Activities[i]
+
+		if prev.EndedAt != nil {
+			var breakTime uint64
+			if curr.StartedAt.After(*prev.EndedAt) {
+				breakTime = uint64(curr.StartedAt.Sub(*prev.EndedAt).Seconds())
+			}
+			if breakTime > maxBreak {
+				maxBreak = breakTime
+			}
+		}
+	}
+
+	d.Breaktime = maxBreak
+}
+
 type DbActivity struct {
 	ID          int
 	ProjectName string

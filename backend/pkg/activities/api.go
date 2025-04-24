@@ -102,34 +102,25 @@ func (a *apiImpl) handleNoAction(w http.ResponseWriter, r *http.Request, id int)
 	switch r.Method {
 	case http.MethodGet:
 		var (
-			startDay, endDay time.Time
-			err              error
+			day time.Time
+			err error
 		)
-		if startDayParam := r.URL.Query().Get("startDay"); startDayParam != "" {
-			startDay, err = time.Parse("2006-01-02", startDayParam)
+		if dayParam := r.URL.Query().Get("day"); dayParam != "" {
+			day, err = time.Parse(time.DateOnly, dayParam)
 			if err != nil {
-				return fmt.Errorf("invalid startDay parameter: %s. Must be of format '2006-01-02'", startDayParam)
+				return fmt.Errorf("invalid day parameter: %s. Must be of format '%s'", dayParam, time.DateOnly)
 			}
 		} else {
-			return errors.New("startDay parameter must be set")
+			return errors.New("day parameter must be set")
 		}
 
-		if endDayParam := r.URL.Query().Get("endDay"); endDayParam != "" {
-			endDay, err = time.Parse("2006-01-02", endDayParam)
-			if err != nil {
-				return fmt.Errorf("invalid endDay parameter: %s. Must be of format '2006-01-02'", endDayParam)
-			}
-		} else {
-			endDay = startDay
-		}
-
-		activities, err := a.activityHandler.GetActivities(r.Context(), startDay, endDay)
+		dailyActivities, err := a.activityHandler.GetDailyActivities(r.Context(), day)
 		if err != nil {
 			return err
 		}
 
 		w.WriteHeader(http.StatusOK)
-		jsonResponse, _ := json.Marshal(activities)
+		jsonResponse, _ := json.Marshal(dailyActivities)
 		w.Write(jsonResponse)
 	case http.MethodPost:
 		type changeActivity struct {

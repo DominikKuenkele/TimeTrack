@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/database"
@@ -421,6 +422,10 @@ func (r *repositoryImpl) GetActivities(userID string, day time.Time) (Activities
 
 		activitySlice = append(activitySlice, activity.ToDomain())
 	}
+
+	slices.SortFunc(activitySlice, func(a, b *Activity) int {
+		return a.StartedAt.Compare(b.StartedAt)
+	})
 
 	return activitySlice, nil
 }

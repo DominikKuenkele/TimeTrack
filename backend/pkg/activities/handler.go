@@ -11,7 +11,7 @@ import (
 )
 
 type Handler interface {
-	GetActivities(ctx context.Context, startDay, endDay time.Time) (projects.Activities, error)
+	GetDailyActivities(ctx context.Context, day time.Time) (projects.DailyActivities, error)
 	ChangeActivity(ctx context.Context, activity projects.Activity) error
 }
 
@@ -29,24 +29,23 @@ func NewHandler(l logger.Logger, repository projects.Repository) Handler {
 	}
 }
 
-func (h *handlerImpl) GetActivities(ctx context.Context, startDay, endDay time.Time) (projects.Activities, error) {
-	if startDay.IsZero() || endDay.IsZero() {
-		return nil, errors.New("start and end day must be set")
+func (h *handlerImpl) GetDailyActivities(ctx context.Context, day time.Time) (projects.DailyActivities, error) {
+	if day.IsZero() {
+		return projects.DailyActivities{}, errors.New("day must be set")
 	}
 
-	activities := projects.Activities{}
-	for day := startDay; day.Before(endDay) || day.Equal(endDay); day = day.AddDate(0, 0, 1) {
-		dailyActivities, err := h.repository.GetActivities(user.FromContext(ctx), day)
-		if err != nil {
-			return nil, err
-		}
-
-		if dailyActivities != nil {
-			activities = append(activities, dailyActivities...)
-		}
+	activites, err := h.repository.GetActivities(user.FromContext(ctx), day)
+	if err != nil {
+		return projects.DailyActivities{}, err
 	}
 
-	return activities, nil
+	res := projects.DailyActivities{
+		Activities: activites,
+	}
+	res.CalculateBreaktime()
+	res.CalculateWorktime()
+
+	return res, nil
 }
 
 func (h *handlerImpl) ChangeActivity(ctx context.Context, activity projects.Activity) error {
