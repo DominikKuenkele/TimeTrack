@@ -117,7 +117,6 @@ func (h *handlerImpl) StartProject(ctx context.Context, name string) error {
 	}
 
 	return h.repository.StartProject(user.FromContext(ctx), name)
-
 }
 
 func (h *handlerImpl) StopProject(ctx context.Context, name string) error {

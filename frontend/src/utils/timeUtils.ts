@@ -17,16 +17,21 @@ export const formatTime = (totalSeconds: number): string => {
  * Format runtime in a human-readable format (Xh Ym Zs)
  */
 export const formatRuntime = (totalSeconds: number): string => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+    const isNegative = totalSeconds < 0;
+    const absSeconds = Math.abs(totalSeconds);
+
+    const hours = Math.floor(absSeconds / 3600);
+    const minutes = Math.floor((absSeconds % 3600) / 60);
+    const seconds = absSeconds % 60;
+
+    const prefix = isNegative ? '-' : '';
 
     if (hours > 0) {
-        return `${hours}h ${minutes}m ${seconds}s`;
+        return `${prefix}${hours}h ${minutes}m ${seconds}s`;
     } else if (minutes > 0) {
-        return `${minutes}m ${seconds}s`;
+        return `${prefix}${minutes}m ${seconds}s`;
     } else {
-        return `${seconds}s`;
+        return `${prefix}${seconds}s`;
     }
 };
 

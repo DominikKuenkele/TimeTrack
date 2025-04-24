@@ -25,6 +25,7 @@ export interface DailyActivities {
     activities: Activity[];
     worktime: number;
     breaktime: number;
+    overtime: number;
 }
 
 export const getActivityDurationInSeconds = (activity: Activity): number => {

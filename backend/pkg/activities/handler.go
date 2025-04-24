@@ -10,6 +10,8 @@ import (
 	"github.com/DominikKuenkele/TimeTrack/projects"
 )
 
+const workHours = 8 * 60 * 60
+
 type Handler interface {
 	GetDailyActivities(ctx context.Context, day time.Time) (projects.DailyActivities, error)
 	ChangeActivity(ctx context.Context, activity projects.Activity) error
@@ -34,13 +36,26 @@ func (h *handlerImpl) GetDailyActivities(ctx context.Context, day time.Time) (pr
 		return projects.DailyActivities{}, errors.New("day must be set")
 	}
 
-	activites, err := h.repository.GetActivities(user.FromContext(ctx), day)
+	userID := user.FromContext(ctx)
+
+	activites, err := h.repository.GetActivities(userID, day)
 	if err != nil {
 		return projects.DailyActivities{}, err
 	}
 
+	worktime, err := h.repository.GetWorktime(userID)
+	if err != nil {
+		return projects.DailyActivities{}, err
+	}
+
+	var overtime int64
+	for _, day := range worktime {
+		overtime += int64(day.Worktime-day.Breaktime) - workHours
+	}
+
 	res := projects.DailyActivities{
 		Activities: activites,
+		Overtime:   overtime,
 	}
 	res.CalculateBreaktime()
 	res.CalculateWorktime()

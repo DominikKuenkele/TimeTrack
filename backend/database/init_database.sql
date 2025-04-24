@@ -47,3 +47,16 @@ CREATE TABLE IF NOT EXISTS activities (
 );
 CREATE TRIGGER update_activities_modtime BEFORE
 UPDATE ON activities FOR EACH ROW EXECUTE FUNCTION update_modified_column();
+-- Worktime --
+CREATE TABLE IF NOT EXISTS worktime (
+    user_id TEXT NOT NULL,
+    day TIMESTAMP NOT NULL,
+    work_time INTEGER NOT NULL,
+    break_time INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, day)
+);
+CREATE TRIGGER update_worktime_modtime BEFORE
+UPDATE ON worktime FOR EACH ROW EXECUTE FUNCTION update_modified_column();

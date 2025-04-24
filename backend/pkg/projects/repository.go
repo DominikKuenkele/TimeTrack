@@ -23,6 +23,7 @@ type Repository interface {
 	StopProject(userID, name string) error
 	GetActivities(userID string, day time.Time) (Activities, error)
 	ChangeActivity(userID string, activity Activity) error
+	GetWorktime(userID string) ([]*Worktime, error)
 }
 
 type repositoryImpl struct {
@@ -59,6 +60,12 @@ const (
 	columnsActivitiesEndedAt    = "ended_at"
 	columnsActivitiesCreatedAt  = "created_at"
 	columnsActivitiesUpdatedAt  = "updated_at"
+
+	tableWorktime           = "worktime"
+	columnWorktimeUserID    = "user_id"
+	columnWorktimeDay       = "day"
+	columnWorktimeWorktime  = "work_time"
+	columnWorktimeBreaktime = "break_time"
 )
 
 func (r *repositoryImpl) AddProject(userID, name string) error {
@@ -321,7 +328,7 @@ func (r *repositoryImpl) StartProject(userID, name string) error {
 	tx.Commit()
 	tx = nil
 
-	return nil
+	return r.updateWorktime(userID, time.Now())
 }
 
 func (r *repositoryImpl) StopProject(userID, name string) error {
@@ -381,7 +388,7 @@ func (r *repositoryImpl) stopProjectWithTx(tx *sql.Tx, userID, name string) erro
 		tx = nil
 	}
 
-	return nil
+	return r.updateWorktime(userID, time.Now())
 }
 
 func (r *repositoryImpl) GetActivities(userID string, day time.Time) (Activities, error) {
@@ -399,7 +406,7 @@ func (r *repositoryImpl) GetActivities(userID string, day time.Time) (Activities
 	if err != nil {
 		switch {
 		case errors.As(err, &database.NoRowsError{}):
-			return nil, nil
+			return Activities{}, nil
 		default:
 			return nil, r.logger.LogAndAbstractError("database error", "Error getting activities: %+v", err)
 		}
@@ -454,5 +461,62 @@ func (r *repositoryImpl) ChangeActivity(userID string, activity Activity) error 
 		return r.logger.LogAndAbstractError("database error", "activity '%d' not found", activity.ID)
 	}
 
+	return r.updateWorktime(userID, activity.StartedAt)
+}
+
+func (r *repositoryImpl) updateWorktime(userID string, day time.Time) error {
+	activities, err := r.GetActivities(userID, day)
+	if err != nil {
+		return err
+	}
+
+	dailyActivities := DailyActivities{
+		Activities: activities,
+	}
+	dailyActivities.CalculateWorktime()
+	dailyActivities.CalculateBreaktime()
+
+	_, err = r.database.Exec(
+		"INSERT INTO "+tableWorktime+
+			" ("+columnWorktimeUserID+", "+columnWorktimeDay+", "+columnWorktimeWorktime+", "+columnWorktimeBreaktime+")"+
+			" VALUES ($1, $2::date, $3, $4)"+
+			" ON CONFLICT ("+columnWorktimeUserID+", "+columnWorktimeDay+")"+
+			" DO UPDATE SET "+columnWorktimeWorktime+"=$3, "+columnWorktimeBreaktime+"=$4;",
+		userID, day, dailyActivities.Worktime, dailyActivities.Breaktime)
+	if err != nil {
+		return r.logger.LogAndAbstractError("database error", "Couldn't update worktime: %+v", err)
+	}
+
 	return nil
+}
+
+func (r *repositoryImpl) GetWorktime(userID string) ([]*Worktime, error) {
+	rows, err := r.database.Query(
+		"SELECT "+columnWorktimeDay+", "+columnWorktimeWorktime+", "+columnWorktimeBreaktime+
+			" FROM "+tableWorktime+
+			" WHERE "+columnWorktimeUserID+"=$1"+
+			" ORDER BY "+columnWorktimeDay+" DESC;",
+		userID)
+	if err != nil {
+		return nil, r.logger.LogAndAbstractError("database error", "Couldn't get worktime: %+v", err)
+	}
+	defer rows.Close()
+
+	var worktimes []*Worktime
+	for rows.Next() {
+		var worktime = &Worktime{}
+		var day time.Time
+		if err := rows.Scan(&day, &worktime.Worktime, &worktime.Breaktime); err != nil {
+			return nil, r.logger.LogAndAbstractError("database error", "Couldn't scan worktime: %+v", err)
+		}
+		worktime.UserID = userID
+		worktime.Day = day
+		worktimes = append(worktimes, worktime)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, r.logger.LogAndAbstractError("database error", "Error iterating worktime rows: %+v", err)
+	}
+
+	return worktimes, nil
 }

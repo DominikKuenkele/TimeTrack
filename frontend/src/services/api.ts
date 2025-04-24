@@ -93,7 +93,8 @@ export const activityService = {
             return {
                 activities: response.data.activities.map(activity => mapActivity(activity)),
                 worktime: response.data.worktime,
-                breaktime: response.data.breaktime
+                breaktime: response.data.breaktime,
+                overtime: response.data.overtime
             };
         } catch (error) {
             logErrorIfNeeded(error);

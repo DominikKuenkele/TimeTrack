@@ -13,7 +13,8 @@ const ActivityOverview: React.FC = () => {
     const [dailyActivities, setDailyActivities] = useState<DailyActivities>({
         activities: [],
         worktime: 0,
-        breaktime: 0
+        breaktime: 0,
+        overtime: 0,
     });
     const [error, setError] = useState<string | null>(null);
 
@@ -76,7 +77,8 @@ const ActivityOverview: React.FC = () => {
             {error && <div className="activity-overview-error">{error}</div>}
 
             <div className="activity-overview-total-runtime">
-                <strong>Total Time: </strong>{formatRuntime(dailyActivities.worktime)} (Break: {formatRuntime(dailyActivities.breaktime)})
+                <strong>Total Time: </strong>{formatRuntime(dailyActivities.worktime)} (Break: {formatRuntime(dailyActivities.breaktime)}),
+                <strong> Overtime: </strong>{formatRuntime(dailyActivities.overtime)}
             </div>
 
             <ActivityList

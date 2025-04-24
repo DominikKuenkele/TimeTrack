@@ -77,6 +77,7 @@ type DailyActivities struct {
 	Activities Activities `json:"activities"`
 	Breaktime  uint64     `json:"breaktime"`
 	Worktime   uint64     `json:"worktime"`
+	Overtime   int64      `json:"overtime"`
 }
 
 func (d *DailyActivities) CalculateWorktime() {
@@ -151,4 +152,11 @@ func (a *DbActivity) ToDomain() *Activity {
 	}
 
 	return activity
+}
+
+type Worktime struct {
+	UserID    string
+	Day       time.Time
+	Worktime  uint
+	Breaktime uint
 }
