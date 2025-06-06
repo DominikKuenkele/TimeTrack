@@ -1,41 +1,108 @@
-import axios, { AxiosInstance } from 'axios';
 import { Activity, DailyActivities, PaginatedProjects, Project } from '../types';
+import { getAccessToken } from '../utils/auth';
 import { dateToDayString } from '../utils/timeUtils';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const NODE_ENV = import.meta.env.VITE_NODE_ENV;
 
-const api: AxiosInstance = axios.create({
-    baseURL: API_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    withCredentials: true,
-});
+interface RequestOptions extends RequestInit {
+    requiresAuth?: boolean;
+}
 
 const logErrorIfNeeded = (error: any) => {
     if (NODE_ENV !== 'production') {
         console.log('API Error Response:', error.response?.data);
     }
-    throw error; // Re-throw the error to be caught by the component
+    throw error;
 };
 
+const mapProject = (project: any): Project => {
+    return {
+        ...project,
+        startedAt: project.startedAt ? new Date(project.startedAt) : null,
+    };
+};
+
+const mapActivity = (activity: any): Activity => {
+    return {
+        ...activity,
+        startedAt: new Date(activity.startedAt),
+        endedAt: activity.endedAt ? new Date(activity.endedAt) : null,
+    };
+};
+
+async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    const { requiresAuth = true, headers = {}, ...rest } = options;
+
+    const requestHeaders = new Headers({
+        'Content-Type': 'application/json',
+        ...headers,
+    });
+
+    if (requiresAuth) {
+        const token = getAccessToken();
+        if (!token) {
+            throw new Error('No access token available');
+        }
+        requestHeaders.set('Authorization', `Bearer ${token}`);
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: requestHeaders,
+        ...rest,
+        credentials: 'include', // Include cookies in requests
+    });
+
+    if (!response.ok) {
+        if (response.status === 401) {
+            // Handle unauthorized access
+            window.location.href = '/auth/login';
+            throw new Error('Unauthorized');
+        }
+        throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    return response.json();
+}
+
+export const api = {
+    get: <T>(endpoint: string, options?: RequestOptions) =>
+        apiRequest<T>(endpoint, { ...options, method: 'GET' }),
+
+    post: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
+        apiRequest<T>(endpoint, {
+            ...options,
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+
+    put: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
+        apiRequest<T>(endpoint, {
+            ...options,
+            method: 'PUT',
+            body: JSON.stringify(data),
+        }),
+
+    delete: <T>(endpoint: string, options?: RequestOptions) =>
+        apiRequest<T>(endpoint, { ...options, method: 'DELETE' }),
+};
+
+// Project-related API calls
 export const projectService = {
     getProjectsLike: async (page = 1, perPage = 20, searchTerm = ""): Promise<PaginatedProjects> => {
         try {
             const response = await api.get<PaginatedProjects>(`/projects/?page=${page}&per_page=${perPage}&search_term=${searchTerm}`);
 
-            if (response.data.activeProject === undefined) {
-                response.data.activeProject = null;
+            if (response.activeProject === undefined) {
+                response.activeProject = null;
             } else {
-                response.data.activeProject = mapProject(response.data.activeProject!)
+                response.activeProject = mapProject(response.activeProject);
             }
 
-
             return {
-                ...response.data,
-                projects: response.data.projects.map(project => mapProject(project)),
-            };;
+                ...response,
+                projects: response.projects.map(project => mapProject(project)),
+            };
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
@@ -46,7 +113,7 @@ export const projectService = {
         try {
             const encodedName = encodeURIComponent(projectName);
             const response = await api.post<Project>(`/projects/${encodedName}`);
-            return mapProject(response.data);
+            return mapProject(response);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
@@ -67,7 +134,7 @@ export const projectService = {
         try {
             const encodedName = encodeURIComponent(projectName);
             const response = await api.post<Project>(`/projects/${encodedName}/start`);
-            return mapProject(response.data);
+            return mapProject(response);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
@@ -78,7 +145,7 @@ export const projectService = {
         try {
             const encodedName = encodeURIComponent(projectName);
             const response = await api.post<Project>(`/projects/${encodedName}/stop`);
-            return mapProject(response.data);
+            return mapProject(response);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
@@ -86,28 +153,30 @@ export const projectService = {
     },
 };
 
+// Activity-related API calls
 export const activityService = {
     getDailyActivities: async (day: Date): Promise<DailyActivities> => {
         try {
             const response = await api.get<DailyActivities>(`/activities/?day=${dateToDayString(day)}`);
             return {
-                activities: response.data.activities.map(activity => mapActivity(activity)),
-                worktime: response.data.worktime,
-                breaktime: response.data.breaktime,
-                overtime: response.data.overtime
+                activities: response.activities.map(activity => mapActivity(activity)),
+                worktime: response.worktime,
+                breaktime: response.breaktime,
+                overtime: response.overtime
             };
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
         }
     },
+
     changeActivity: async (activity: Activity): Promise<void> => {
         try {
             const data = {
                 "projectName": activity.projectName,
                 "startedAt": activity.startedAt,
                 "endedAt": activity.endedAt
-            }
+            };
 
             await api.post<void>(`/activities/${activity.id}`, data);
         } catch (error) {
@@ -158,31 +227,12 @@ export const userService = {
     validate: async (): Promise<boolean> => {
         try {
             const response = await api.get<boolean>('/user/validate');
-            return response.data;
+            return response;
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
         }
     },
 };
-
-function mapProject(oldProject: Project): Project {
-    const project: Project = {
-        ...oldProject,
-        startedAt: oldProject.startedAt ? new Date(oldProject.startedAt) : null,
-    };
-
-    return project
-}
-
-function mapActivity(oldActivity: Activity): Activity {
-    const activity: Activity = {
-        ...oldActivity,
-        startedAt: new Date(oldActivity.startedAt),
-        endedAt: oldActivity.endedAt ? new Date(oldActivity.endedAt) : null
-    };
-
-    return activity
-}
 
 export default api; 

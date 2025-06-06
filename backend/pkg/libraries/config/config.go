@@ -11,6 +11,7 @@ type Config struct {
 	PostgresPassword string `env:"POSTGRES_PASSWORD,required"`
 
 	FrontendAddress string `env:"FRONTEND_ADDRESS,required"`
+	OAuthServerURL  string `env:"OAUTH_SERVER_URL,required"`
 
 	LogLevel string `env:"LOG_LEVEL" envDefault:"debug"`
 	LogFile  string `env:"LOG_FILE"`

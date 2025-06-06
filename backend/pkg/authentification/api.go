@@ -207,21 +207,28 @@ func (a *apiImpl) handleValidateAction(w http.ResponseWriter, r *http.Request) e
 
 func (a *apiImpl) Authenticate(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sessionCookie, err := r.Cookie(sessionCookieKey)
-		if err != nil || sessionCookie == nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
+		if sessionCookie, err := r.Cookie(sessionCookieKey); err == nil && sessionCookie != nil {
+			if userID, err := a.authentificationHandler.ValidateSession(sessionCookie.Value); err == nil {
+				ctx := user.ToContext(r.Context(), userID)
+				next.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
 		}
 
-		userID, err := a.authentificationHandler.ValidateSession(sessionCookie.Value)
-		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
+		if token := extractBearerToken(r); token != "" {
+			sessionID, expiry, err := a.authentificationHandler.ValidateOAuthToken(token)
+			if err == nil {
+				setSessionCookie(w, sessionID, expiry)
+
+				if userID, err := a.authentificationHandler.ValidateSession(sessionID); err == nil {
+					ctx := user.ToContext(r.Context(), userID)
+					next.ServeHTTP(w, r.WithContext(ctx))
+					return
+				}
+			}
 		}
 
-		ctx := user.ToContext(r.Context(), userID)
-
-		next.ServeHTTP(w, r.WithContext(ctx))
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	})
 }
 
@@ -235,4 +242,18 @@ func setSessionCookie(w http.ResponseWriter, sessionID string, expiry time.Time)
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 	})
+}
+
+func extractBearerToken(r *http.Request) string {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return ""
+	}
+
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return ""
+	}
+
+	return parts[1]
 }
