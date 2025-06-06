@@ -45,7 +45,13 @@ func main() {
 	server := server.NewServer("", "80", cfg.FrontendAddress, logger)
 	server.AddHandler("/", defaultHandler(logger))
 
-	authenticatorAPI, err := authentification.BuildAuthenticator(logger, database, cfg.EnableCreateUser, cfg.OAuthServerURL)
+	authenticatorAPI, err := authentification.BuildAuthenticator(
+		logger,
+		database,
+		cfg.EnableCreateUser,
+		cfg.OAuthServerURL,
+		cfg.OAuthClientID,
+	)
 	if err != nil {
 		logger.Error(err.Error())
 		return

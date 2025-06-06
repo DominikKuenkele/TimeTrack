@@ -35,7 +35,13 @@ type handlerImpl struct {
 
 var _ Handler = &handlerImpl{}
 
-func NewHandler(l logger.Logger, sessionRepository SessionRepository, userRepository UserRepository, oauthServerURL string) (Handler, error) {
+func NewHandler(
+	l logger.Logger,
+	sessionRepository SessionRepository,
+	userRepository UserRepository,
+	oauthServerURL,
+	oauthClientID string,
+) (Handler, error) {
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, oauthServerURL)
 	if err != nil {
@@ -43,7 +49,7 @@ func NewHandler(l logger.Logger, sessionRepository SessionRepository, userReposi
 	}
 
 	verifier := provider.Verifier(&oidc.Config{
-		SkipClientIDCheck: true, // We'll validate the client ID in the claims
+		ClientID: oauthClientID,
 	})
 
 	return &handlerImpl{
@@ -135,10 +141,8 @@ func (h *handlerImpl) ValidateOAuthToken(token string) (string, time.Time, error
 		EmailVerified bool     `json:"email_verified"`
 		Name          string   `json:"name"`
 		Groups        []string `json:"groups"`
-		ClientID      string   `json:"client_id"`
 		IssuedAt      int64    `json:"iat"`
 		ExpiresAt     int64    `json:"exp"`
-		NotBefore     int64    `json:"nbf"`
 		Issuer        string   `json:"iss"`
 		Audience      []string `json:"aud"`
 	}
@@ -152,10 +156,6 @@ func (h *handlerImpl) ValidateOAuthToken(token string) (string, time.Time, error
 
 	if claims.ExpiresAt < time.Now().Unix() {
 		return "", time.Time{}, errors.New("token has expired")
-	}
-
-	if claims.NotBefore > time.Now().Unix() {
-		return "", time.Time{}, errors.New("token is not yet valid")
 	}
 
 	if !strings.HasPrefix(claims.Issuer, h.oauthServerURL) {

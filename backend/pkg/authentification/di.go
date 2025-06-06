@@ -7,7 +7,7 @@ import (
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 )
 
-func BuildAuthenticator(logger logger.Logger, database database.Database, enableCreateUser bool, oauthServerURL string) (API, error) {
+func BuildAuthenticator(logger logger.Logger, database database.Database, enableCreateUser bool, oauthServerURL, oauthClientID string) (API, error) {
 	sessionRepository, err := NewSessionRepository(logger, database)
 	if err != nil {
 		return nil, fmt.Errorf("error building authenticator. %+v", err)
@@ -18,7 +18,7 @@ func BuildAuthenticator(logger logger.Logger, database database.Database, enable
 		return nil, fmt.Errorf("error building authenticator. %+v", err)
 	}
 
-	authenticatorHandler, err := NewHandler(logger, sessionRepository, userRepository, oauthServerURL)
+	authenticatorHandler, err := NewHandler(logger, sessionRepository, userRepository, oauthServerURL, oauthClientID)
 	if err != nil {
 		return nil, fmt.Errorf("error building authenticator. %+v", err)
 	}
