@@ -9,6 +9,8 @@ build_frontend:
   script:
     - echo "VITE_API_URL=${VITE_API_URL}" > ${CI_PROJECT_DIR}/frontend/.env
     - echo "VITE_NODE_ENV=${VITE_NODE_ENV}" >> ${CI_PROJECT_DIR}/frontend/.env
+    - echo "VITE_AUTH_CLIENT_ID=${VITE_AUTH_CLIENT_ID}" >> ${CI_PROJECT_DIR}/frontend/.env
+    - echo "VITE_AUTH_SERVER_URL=${VITE_AUTH_SERVER_URL}" >> ${CI_PROJECT_DIR}/frontend/.env
     - /kaniko/executor
       --context "${CI_PROJECT_DIR}/frontend"
       --dockerfile "${CI_PROJECT_DIR}/frontend/Dockerfile"
