@@ -1,13 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { exchangeCodeForToken } from '../../utils/auth';
+import { useAuth } from '../AuthContext';
 
 export const Callback = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
+    const { isLoggedIn, login } = useAuth();
 
     useEffect(() => {
+        // If already authenticated, redirect to home
+        if (isLoggedIn) {
+            navigate('/');
+            return;
+        }
+
         const handleCallback = async () => {
             const code = searchParams.get('code');
             const error = searchParams.get('error');
@@ -24,6 +32,7 @@ export const Callback = () => {
 
             try {
                 await exchangeCodeForToken(code);
+                login(); // Update auth state after successful token exchange
                 navigate('/');
             } catch (err) {
                 setError('Failed to exchange code for token');
@@ -32,7 +41,7 @@ export const Callback = () => {
         };
 
         handleCallback();
-    }, [searchParams, navigate]);
+    }, [searchParams, navigate, isLoggedIn, login]);
 
     if (error) {
         return (

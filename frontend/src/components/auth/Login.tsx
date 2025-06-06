@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAuthorizationUrl, isAuthenticated } from '../../utils/auth';
+import { getAuthorizationUrl } from '../../utils/auth';
+import { useAuth } from '../AuthContext';
 
 export const Login = () => {
     const navigate = useNavigate();
+    const { isLoggedIn } = useAuth();
 
     useEffect(() => {
         // If already authenticated, redirect to home
-        if (isAuthenticated()) {
+        if (isLoggedIn) {
             navigate('/');
             return;
         }
@@ -24,7 +26,7 @@ export const Login = () => {
         };
 
         startAuth();
-    }, [navigate]);
+    }, [navigate, isLoggedIn]);
 
     return (
         <div className="flex items-center justify-center min-h-screen">
