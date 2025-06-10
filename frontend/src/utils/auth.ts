@@ -65,7 +65,11 @@ export async function getAuthorizationUrl(): Promise<string> {
         code_challenge_method: 'S256',
     });
 
-    return `${AUTH_ENDPOINTS.authorization}?${params.toString()}`;
+    const url = `${AUTH_ENDPOINTS.authorization}?${params.toString()}`;
+    console.log('Authorization URL:', url);
+    console.log('AUTH_CONFIG:', AUTH_CONFIG);
+    console.log('AUTH_ENDPOINTS:', AUTH_ENDPOINTS);
+    return url;
 }
 
 // Exchange authorization code for access token
@@ -83,22 +87,43 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
         grant_type: 'authorization_code',
     });
 
-    const response = await fetch(AUTH_ENDPOINTS.token, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: params.toString(),
-    });
+    console.log('Making token request to:', AUTH_ENDPOINTS.token);
+    console.log('With params:', params.toString());
 
-    if (!response.ok) {
-        throw new Error('Failed to exchange code for token');
+    try {
+        const response = await fetch(AUTH_ENDPOINTS.token, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            credentials: 'include',
+            body: params.toString(),
+        });
+
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Token exchange failed:', errorText);
+            throw new Error(`Failed to exchange code for token: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('Token response:', data);
+
+        if (!data.access_token) {
+            throw new Error('No access token in response');
+        }
+
+        storeAccessToken(data.access_token);
+        clearPKCE();
+        return data.access_token;
+    } catch (error) {
+        console.error('Token exchange error:', error);
+        // Don't clear PKCE on error so we can retry
+        throw error;
     }
-
-    const data = await response.json();
-    storeAccessToken(data.access_token);
-    clearPKCE();
-    return data.access_token;
 }
 
 // Check if user is authenticated
