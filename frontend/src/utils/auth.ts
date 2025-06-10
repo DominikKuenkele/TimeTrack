@@ -66,9 +66,7 @@ export async function getAuthorizationUrl(): Promise<string> {
     });
 
     const url = `${AUTH_ENDPOINTS.authorization}?${params.toString()}`;
-    console.log('Authorization URL:', url);
-    console.log('AUTH_CONFIG:', AUTH_CONFIG);
-    console.log('AUTH_ENDPOINTS:', AUTH_ENDPOINTS);
+
     return url;
 }
 
@@ -87,9 +85,6 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
         grant_type: 'authorization_code',
     });
 
-    console.log('Making token request to:', AUTH_ENDPOINTS.token);
-    console.log('With params:', params.toString());
-
     try {
         const response = await fetch(AUTH_ENDPOINTS.token, {
             method: 'POST',
@@ -100,17 +95,13 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
             body: params.toString(),
         });
 
-        console.log('Response status:', response.status);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Token exchange failed:', errorText);
+
             throw new Error(`Failed to exchange code for token: ${errorText}`);
         }
 
         const data = await response.json();
-        console.log('Token response:', data);
 
         if (!data.access_token) {
             throw new Error('No access token in response');
@@ -120,7 +111,6 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
         clearPKCE();
         return data.access_token;
     } catch (error) {
-        console.error('Token exchange error:', error);
         // Don't clear PKCE on error so we can retry
         throw error;
     }
