@@ -8,7 +8,6 @@ import { useAuth } from '../AuthContext';
 import ActivityList from './ActivityList';
 import './ActivityOverview.css';
 
-
 const ActivityOverview: React.FC = () => {
     const [dailyActivities, setDailyActivities] = useState<DailyActivities>({
         activities: [],
@@ -17,32 +16,28 @@ const ActivityOverview: React.FC = () => {
         overtime: 0,
     });
     const [error, setError] = useState<string | null>(null);
-
     const [day, setDay] = useState<Date>(new Date());
-
-    const { isLoggedIn, isLoading } = useAuth();
+    const { isLoggedIn } = useAuth();
     const navigate = useNavigate();
-
     const [updateProjects, setUpdateActivities] = useState<boolean>(true);
 
     useEffect(() => {
-        if (!isLoading && !isLoggedIn) {
-            navigate('/login');
+        if (!isLoggedIn) {
+            navigate('/auth/login');
         }
-    }, [isLoggedIn, isLoading, navigate])
+    }, [isLoggedIn, navigate]);
 
     useEffect(() => {
         fetchActivities();
-    }, [day, updateProjects])
+    }, [day, updateProjects]);
 
     const fetchActivities = async (): Promise<void> => {
         if (!isLoggedIn) {
-            return
+            return;
         }
 
         try {
             const data = await activityService.getDailyActivities(day);
-
             setDailyActivities(data);
             setError(null);
         } catch (err: unknown) {
@@ -85,7 +80,7 @@ const ActivityOverview: React.FC = () => {
                 dailyActivities={dailyActivities}
                 setUpdateActivities={setUpdateActivities}
             />
-        </div >
+        </div>
     );
 };
 
