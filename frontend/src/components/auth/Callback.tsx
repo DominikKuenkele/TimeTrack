@@ -7,26 +7,23 @@ export const Callback = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
-    const { isLoggedIn, login } = useAuth();
+    const [isProcessing, setIsProcessing] = useState(true);
+    const { login } = useAuth();
 
     useEffect(() => {
-        // If already authenticated, redirect to home
-        if (isLoggedIn) {
-            navigate('/');
-            return;
-        }
-
         const handleCallback = async () => {
             const code = searchParams.get('code');
             const error = searchParams.get('error');
 
             if (error) {
                 setError(`Authentication failed: ${error}`);
+                setIsProcessing(false);
                 return;
             }
 
             if (!code) {
                 setError('No authorization code received');
+                setIsProcessing(false);
                 return;
             }
 
@@ -37,11 +34,12 @@ export const Callback = () => {
             } catch (err) {
                 setError('Failed to exchange code for token');
                 console.error('Token exchange error:', err);
+                setIsProcessing(false);
             }
         };
 
         handleCallback();
-    }, [searchParams, navigate, isLoggedIn, login]);
+    }, [searchParams, navigate, login]);
 
     if (error) {
         return (
@@ -60,12 +58,16 @@ export const Callback = () => {
         );
     }
 
-    return (
-        <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-                <h1 className="text-2xl font-bold mb-4">Completing authentication...</h1>
-                <p className="text-gray-600">Please wait while we complete the login process.</p>
+    if (isProcessing) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <h1 className="text-2xl font-bold mb-4">Completing authentication...</h1>
+                    <p className="text-gray-600">Please wait while we complete the login process.</p>
+                </div>
             </div>
-        </div>
-    );
+        );
+    }
+
+    return null;
 }; 
