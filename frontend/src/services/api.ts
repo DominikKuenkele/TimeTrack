@@ -187,20 +187,6 @@ export const activityService = {
 };
 
 export const userService = {
-    login: async (username = "", password = ""): Promise<void> => {
-        try {
-            const data = {
-                "username": username,
-                "password": password
-            }
-
-            await api.post<void>('/user/login', data);
-        } catch (error) {
-            logErrorIfNeeded(error);
-            throw error;
-        }
-    },
-
     logout: async (): Promise<void> => {
         try {
             await api.post<void>('/user/logout');
@@ -218,16 +204,6 @@ export const userService = {
             }
 
             await api.post<void>('/user/create', data);
-        } catch (error) {
-            logErrorIfNeeded(error);
-            throw error;
-        }
-    },
-
-    validate: async (): Promise<boolean> => {
-        try {
-            const response = await api.get<boolean>('/user/validate');
-            return response;
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;

@@ -42,9 +42,8 @@ type actionFunc func(w http.ResponseWriter, r *http.Request) error
 
 func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 	actionMap := map[string]actionFunc{
-		"login":    a.handleLoginAction,
-		"logout":   a.handleLogoutAction,
-		"validate": a.handleValidateAction,
+		"login":  a.handleLoginAction,
+		"logout": a.handleLogoutAction,
 	}
 
 	if a.enableCreateUser {
@@ -177,27 +176,6 @@ func (a *apiImpl) handleCreateAction(w http.ResponseWriter, r *http.Request) err
 
 		setSessionCookie(w, sessionID, expiry)
 		w.WriteHeader(http.StatusOK)
-	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
-	}
-
-	return nil
-}
-
-func (a *apiImpl) handleValidateAction(w http.ResponseWriter, r *http.Request) error {
-	switch r.Method {
-	case http.MethodGet:
-		var sessionValid bool
-		if sessionCookie, _ := r.Cookie(sessionCookieKey); sessionCookie != nil {
-			if _, err := a.authentificationHandler.ValidateSession(sessionCookie.Value); err == nil {
-				sessionValid = true
-			}
-		}
-
-		data, _ := json.Marshal(sessionValid)
-
-		w.WriteHeader(http.StatusOK)
-		w.Write(data)
 	default:
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
