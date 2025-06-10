@@ -1,13 +1,9 @@
 import { Activity, DailyActivities, PaginatedProjects, Project } from '../types';
 import { getUser } from '../utils/auth';
-import { dateToDayString } from '../utils/timeUtils';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = '/api';
 const NODE_ENV = import.meta.env.VITE_NODE_ENV;
 
-interface RequestOptions extends RequestInit {
-    requiresAuth?: boolean;
-}
 
 const logErrorIfNeeded = (error: any) => {
     if (NODE_ENV !== 'production') {
@@ -31,60 +27,69 @@ const mapActivity = (activity: any): Activity => {
     };
 };
 
-async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { requiresAuth = true, headers = {}, ...rest } = options;
-
-    const requestHeaders = new Headers({
-        'Content-Type': 'application/json',
-        ...headers,
-    });
-
-    if (requiresAuth) {
-        const user = await getUser();
-        if (!user?.access_token) {
-            throw new Error('No access token available');
-        }
-        requestHeaders.set('Authorization', `Bearer ${user.access_token}`);
+class ApiError extends Error {
+    constructor(public status: number, message: string) {
+        super(message);
+        this.name = 'ApiError';
     }
+}
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: requestHeaders,
-        ...rest,
-        credentials: 'include', // Include cookies in requests
-    });
-
+async function handleResponse(response: Response) {
     if (!response.ok) {
         if (response.status === 401) {
-            // Handle unauthorized access
+            // Redirect to login on unauthorized
             window.location.href = '/auth/login';
-            throw new Error('Unauthorized');
+            throw new ApiError(response.status, 'Unauthorized');
         }
-        throw new Error(`API request failed: ${response.statusText}`);
+        const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new ApiError(response.status, error.message || 'Request failed');
     }
-
     return response.json();
 }
 
-export const api = {
-    get: <T>(endpoint: string, options?: RequestOptions) =>
-        apiRequest<T>(endpoint, { ...options, method: 'GET' }),
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const user = await getUser();
+    const headers = new Headers({
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string> || {}),
+    });
 
-    post: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
-        apiRequest<T>(endpoint, {
-            ...options,
+    // Add authorization header if user is authenticated
+    if (user?.access_token) {
+        headers.set('Authorization', `Bearer ${user.access_token}`);
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+        credentials: 'include', // Include cookies for session management
+    });
+
+    return handleResponse(response);
+}
+
+export const api = {
+    get: <T>(endpoint: string): Promise<T> => {
+        return request<T>(endpoint, { method: 'GET' });
+    },
+
+    post: <T>(endpoint: string, data: unknown): Promise<T> => {
+        return request<T>(endpoint, {
             method: 'POST',
             body: JSON.stringify(data),
-        }),
+        });
+    },
 
-    put: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
-        apiRequest<T>(endpoint, {
-            ...options,
+    put: <T>(endpoint: string, data: unknown): Promise<T> => {
+        return request<T>(endpoint, {
             method: 'PUT',
             body: JSON.stringify(data),
-        }),
+        });
+    },
 
-    delete: <T>(endpoint: string, options?: RequestOptions) =>
-        apiRequest<T>(endpoint, { ...options, method: 'DELETE' }),
+    delete: <T>(endpoint: string): Promise<T> => {
+        return request<T>(endpoint, { method: 'DELETE' });
+    }
 };
 
 // Project-related API calls
@@ -94,14 +99,15 @@ export const projectService = {
             const response = await api.get<PaginatedProjects>(`/projects/?page=${page}&per_page=${perPage}&search_term=${searchTerm}`);
 
             if (response.activeProject === undefined) {
-                response.activeProject = null;
-            } else {
-                response.activeProject = mapProject(response.activeProject);
+                return {
+                    ...response,
+                    activeProject: null
+                };
             }
 
             return {
                 ...response,
-                projects: response.projects.map(project => mapProject(project)),
+                activeProject: mapProject(response.activeProject)
             };
         } catch (error) {
             logErrorIfNeeded(error);
@@ -112,7 +118,7 @@ export const projectService = {
     createProject: async (projectName: string): Promise<Project> => {
         try {
             const encodedName = encodeURIComponent(projectName);
-            const response = await api.post<Project>(`/projects/${encodedName}`);
+            const response = await api.post<Project>(`/projects/${encodedName}`, {});
             return mapProject(response);
         } catch (error) {
             logErrorIfNeeded(error);
@@ -133,7 +139,7 @@ export const projectService = {
     startProject: async (projectName: string): Promise<Project> => {
         try {
             const encodedName = encodeURIComponent(projectName);
-            const response = await api.post<Project>(`/projects/${encodedName}/start`);
+            const response = await api.post<Project>(`/projects/${encodedName}/start`, {});
             return mapProject(response);
         } catch (error) {
             logErrorIfNeeded(error);
@@ -144,20 +150,20 @@ export const projectService = {
     stopProject: async (projectName: string): Promise<Project> => {
         try {
             const encodedName = encodeURIComponent(projectName);
-            const response = await api.post<Project>(`/projects/${encodedName}/stop`);
+            const response = await api.post<Project>(`/projects/${encodedName}/stop`, {});
             return mapProject(response);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
         }
-    },
+    }
 };
 
 // Activity-related API calls
 export const activityService = {
     getDailyActivities: async (day: Date): Promise<DailyActivities> => {
         try {
-            const response = await api.get<DailyActivities>(`/activities/?day=${dateToDayString(day)}`);
+            const response = await api.get<DailyActivities>(`/activities/daily?date=${day.toISOString()}`);
             return {
                 activities: response.activities.map(activity => mapActivity(activity)),
                 worktime: response.worktime,
@@ -173,9 +179,9 @@ export const activityService = {
     changeActivity: async (activity: Activity): Promise<void> => {
         try {
             const data = {
-                "projectName": activity.projectName,
-                "startedAt": activity.startedAt,
-                "endedAt": activity.endedAt
+                projectName: activity.projectName,
+                startedAt: activity.startedAt,
+                endedAt: activity.endedAt
             };
 
             await api.post<void>(`/activities/${activity.id}`, data);
@@ -183,13 +189,14 @@ export const activityService = {
             logErrorIfNeeded(error);
             throw error;
         }
-    },
+    }
 };
 
+// User-related API calls
 export const userService = {
     logout: async (): Promise<void> => {
         try {
-            await api.post<void>('/user/logout');
+            await api.post('/auth/logout', {});
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
@@ -199,16 +206,14 @@ export const userService = {
     createUser: async (username = "", password = ""): Promise<void> => {
         try {
             const data = {
-                "username": username,
-                "password": password
-            }
+                username,
+                password
+            };
 
             await api.post<void>('/user/create', data);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
         }
-    },
-};
-
-export default api; 
+    }
+}; 

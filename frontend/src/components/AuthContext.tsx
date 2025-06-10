@@ -1,24 +1,45 @@
 import React, { createContext, ReactNode, useContext, useState } from 'react';
-import { userService } from '../services/api';
+import { logout as authLogout, startAuthentication } from '../utils/auth';
 
 interface AuthContextType {
     isLoggedIn: boolean;
-    login: () => void;
+    login: () => Promise<void>;
     logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};
 
-    const login = () => setIsLoggedIn(true);
+interface AuthProviderProps {
+    children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+    const [isLoggedIn, setIsLoggedIn] = useState(true);
+
+    const login = async () => {
+        try {
+            await startAuthentication();
+        } catch (error) {
+            console.error('Login error:', error);
+            throw error;
+        }
+    };
+
     const logout = async () => {
         try {
-            await userService.logout();
+            await authLogout();
             setIsLoggedIn(false);
-        } catch (err: unknown) {
-            console.error('Logout error:', err);
+        } catch (error) {
+            console.error('Logout error:', error);
+            throw error;
         }
     };
 
@@ -27,12 +48,4 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             {children}
         </AuthContext.Provider>
     );
-};
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
-    return context;
 };
