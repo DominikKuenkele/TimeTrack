@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { exchangeCodeForToken } from '../../utils/auth';
 import { useAuth } from '../AuthContext';
 
 export const Callback = () => {
-    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [error, setError] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(true);
@@ -12,34 +11,23 @@ export const Callback = () => {
 
     useEffect(() => {
         const handleCallback = async () => {
-            const code = searchParams.get('code');
-            const error = searchParams.get('error');
-
-            if (error) {
-                setError(`Authentication failed: ${error}`);
-                setIsProcessing(false);
-                return;
-            }
-
-            if (!code) {
-                setError('No authorization code received');
-                setIsProcessing(false);
-                return;
-            }
-
             try {
-                await exchangeCodeForToken(code);
-                login(); // Update auth state after successful token exchange
-                navigate('/');
+                const user = await exchangeCodeForToken();
+                if (user?.access_token) {
+                    login(); // Update auth state after successful token exchange
+                    navigate('/');
+                } else {
+                    throw new Error('No access token received');
+                }
             } catch (err) {
-                setError('Failed to exchange code for token');
-                console.error('Token exchange error:', err);
+                setError('Failed to complete authentication');
+                console.error('Authentication error:', err);
                 setIsProcessing(false);
             }
         };
 
         handleCallback();
-    }, [searchParams, navigate, login]);
+    }, [navigate, login]);
 
     if (error) {
         return (

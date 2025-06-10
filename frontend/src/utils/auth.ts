@@ -1,129 +1,65 @@
-import { AUTH_CONFIG, AUTH_ENDPOINTS } from '../config/auth';
+import { User, UserManager, WebStorageStateStore } from 'oidc-client-ts';
+import { AUTH_CONFIG } from '../config/auth';
 
-// Generate a random string for PKCE
-function generateRandomString(length: number): string {
-    const array = new Uint8Array(length);
-    window.crypto.getRandomValues(array);
-    return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-}
+const userManager = new UserManager({
+    authority: AUTH_CONFIG.authServerUrl,
+    client_id: AUTH_CONFIG.clientId,
+    redirect_uri: AUTH_CONFIG.redirectUri,
+    response_type: AUTH_CONFIG.responseType,
+    scope: AUTH_CONFIG.scope,
+    loadUserInfo: true,
+    userStore: new WebStorageStateStore({ store: window.sessionStorage }),
+});
 
-// Generate code verifier and challenge for PKCE
-export async function generatePKCE(): Promise<{ codeVerifier: string; codeChallenge: string }> {
-    const codeVerifier = generateRandomString(64);
-    const encoder = new TextEncoder();
-    const data = encoder.encode(codeVerifier);
-    const hash = await window.crypto.subtle.digest('SHA-256', data);
-    const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-
-    return { codeVerifier, codeChallenge };
-}
-
-// Store PKCE values in session storage
-export function storePKCE(codeVerifier: string): void {
-    sessionStorage.setItem('pkce_code_verifier', codeVerifier);
-}
-
-// Get stored PKCE code verifier
-export function getStoredPKCE(): string | null {
-    return sessionStorage.getItem('pkce_code_verifier');
-}
-
-// Clear stored PKCE values
-export function clearPKCE(): void {
-    sessionStorage.removeItem('pkce_code_verifier');
-}
-
-// Store access token
-export function storeAccessToken(token: string): void {
-    sessionStorage.setItem('access_token', token);
-}
-
-// Get stored access token
-export function getAccessToken(): string | null {
-    return sessionStorage.getItem('access_token');
-}
-
-// Clear stored access token
-export function clearAccessToken(): void {
-    sessionStorage.removeItem('access_token');
-}
-
-// Generate authorization URL
+// Generate authorization URL and start login
 export async function getAuthorizationUrl(): Promise<string> {
-    const { codeVerifier, codeChallenge } = await generatePKCE();
-    storePKCE(codeVerifier);
-
-    const params = new URLSearchParams({
-        client_id: AUTH_CONFIG.clientId,
-        redirect_uri: AUTH_CONFIG.redirectUri,
-        response_type: AUTH_CONFIG.responseType,
-        scope: AUTH_CONFIG.scope,
-        code_challenge: codeChallenge,
-        code_challenge_method: 'S256',
-    });
-
-    const url = `${AUTH_ENDPOINTS.authorization}?${params.toString()}`;
-
-    return url;
+    try {
+        await userManager.signinRedirect();
+        // This URL won't be used as signinRedirect handles the redirect
+        return AUTH_CONFIG.authServerUrl;
+    } catch (error) {
+        console.error('Error starting authentication:', error);
+        throw error;
+    }
 }
 
-// Exchange authorization code for access token
-export async function exchangeCodeForToken(code: string): Promise<string> {
-    const codeVerifier = getStoredPKCE();
-    if (!codeVerifier) {
-        throw new Error('No code verifier found');
-    }
-
-    const params = new URLSearchParams({
-        client_id: AUTH_CONFIG.clientId,
-        code_verifier: codeVerifier,
-        code: code,
-        redirect_uri: AUTH_CONFIG.redirectUri,
-        grant_type: 'authorization_code',
-    });
-
+// Handle the callback and exchange code for token
+export async function exchangeCodeForToken(): Promise<User> {
     try {
-        const response = await fetch(AUTH_ENDPOINTS.token, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            credentials: 'include',
-            body: params.toString(),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-
-            throw new Error(`Failed to exchange code for token: ${errorText}`);
-        }
-
-        const data = await response.json();
-
-        if (!data.access_token) {
-            throw new Error('No access token in response');
-        }
-
-        storeAccessToken(data.access_token);
-        clearPKCE();
-        return data.access_token;
+        return await userManager.signinRedirectCallback();
     } catch (error) {
-        // Don't clear PKCE on error so we can retry
+        console.error('Error exchanging code for token:', error);
         throw error;
     }
 }
 
 // Check if user is authenticated
-export function isAuthenticated(): boolean {
-    return !!getAccessToken();
+export async function isAuthenticated(): Promise<boolean> {
+    try {
+        const user = await userManager.getUser();
+        return !!user && !user.expired;
+    } catch (error) {
+        console.error('Error checking authentication:', error);
+        return false;
+    }
+}
+
+// Get the current user
+export async function getUser(): Promise<User | null> {
+    try {
+        return await userManager.getUser();
+    } catch (error) {
+        console.error('Error getting user:', error);
+        return null;
+    }
 }
 
 // Logout
-export function logout(): void {
-    clearAccessToken();
-    clearPKCE();
-    window.location.href = '/';
+export async function logout(): Promise<void> {
+    try {
+        await userManager.signoutRedirect();
+    } catch (error) {
+        console.error('Error during logout:', error);
+        throw error;
+    }
 } 

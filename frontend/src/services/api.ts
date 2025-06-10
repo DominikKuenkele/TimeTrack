@@ -1,5 +1,5 @@
 import { Activity, DailyActivities, PaginatedProjects, Project } from '../types';
-import { getAccessToken } from '../utils/auth';
+import { getUser } from '../utils/auth';
 import { dateToDayString } from '../utils/timeUtils';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -40,11 +40,11 @@ async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Pr
     });
 
     if (requiresAuth) {
-        const token = getAccessToken();
-        if (!token) {
+        const user = await getUser();
+        if (!user?.access_token) {
             throw new Error('No access token available');
         }
-        requestHeaders.set('Authorization', `Bearer ${token}`);
+        requestHeaders.set('Authorization', `Bearer ${user.access_token}`);
     }
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
