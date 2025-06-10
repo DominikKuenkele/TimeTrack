@@ -9,6 +9,13 @@ const userManager = new UserManager({
     scope: AUTH_CONFIG.scope,
     loadUserInfo: true,
     userStore: new WebStorageStateStore({ store: window.sessionStorage }),
+    post_logout_redirect_uri: `${window.location.origin}/auth/login`,
+    metadata: {
+        authorization_endpoint: `${AUTH_CONFIG.authServerUrl}/application/o/authorize/`,
+        token_endpoint: `${AUTH_CONFIG.authServerUrl}/application/o/token/`,
+        userinfo_endpoint: `${AUTH_CONFIG.authServerUrl}/application/o/userinfo/`,
+        end_session_endpoint: `${AUTH_CONFIG.authServerUrl}/application/o/end-session/`,
+    }
 });
 
 // Generate authorization URL and start login
