@@ -43,10 +43,15 @@ func NewHandler(
 	oauthClientID string,
 ) (Handler, error) {
 	ctx := context.Background()
-	provider, err := oidc.NewProvider(ctx, oauthServerURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create OIDC provider: %w", err)
+
+	providerConfig := oidc.ProviderConfig{
+		IssuerURL:   oauthServerURL + "/application/o/timetrack/",
+		AuthURL:     oauthServerURL + "/application/o/authorize/",
+		TokenURL:    oauthServerURL + "/application/o/token/",
+		UserInfoURL: oauthServerURL + "/application/o/userinfo/",
+		JWKSURL:     oauthServerURL + "/application/o/timetrack/jwks/",
 	}
+	provider := providerConfig.NewProvider(ctx)
 
 	verifier := provider.Verifier(&oidc.Config{
 		ClientID: oauthClientID,
