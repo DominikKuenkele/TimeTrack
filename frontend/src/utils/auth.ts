@@ -1,20 +1,34 @@
 import { AUTH_CONFIG } from '../config/auth';
 
+interface AuthentikUserProfile {
+    iss: string;
+    sub: string;
+    aud: string;
+    exp: number;
+    iat: number;
+    auth_time: number;
+    acr: string;
+    email: string;
+    email_verified: boolean;
+    name: string;
+    given_name: string;
+    preferred_username: string;
+    nickname: string;
+    groups: string[];
+}
+
 interface User {
     access_token: string;
     id_token: string;
-    profile: {
-        sub: string;
-        email: string;
-        name: string;
-    };
+    profile: AuthentikUserProfile;
     expired: boolean;
 }
 
 const STORAGE_KEYS = {
     USER: 'auth_user',
     STATE: 'auth_state',
-    CODE_VERIFIER: 'auth_code_verifier'
+    CODE_VERIFIER: 'auth_code_verifier',
+    REDIRECT_URI: 'auth_redirect_uri'
 } as const;
 
 // Generate a random string for state and code verifier
@@ -45,6 +59,7 @@ export async function startAuthentication(): Promise<void> {
         // Store state and code verifier in session storage
         sessionStorage.setItem(STORAGE_KEYS.STATE, state);
         sessionStorage.setItem(STORAGE_KEYS.CODE_VERIFIER, codeVerifier);
+        sessionStorage.setItem(STORAGE_KEYS.REDIRECT_URI, AUTH_CONFIG.redirectUri);
 
         const params = new URLSearchParams({
             client_id: AUTH_CONFIG.clientId,
@@ -56,6 +71,7 @@ export async function startAuthentication(): Promise<void> {
             code_challenge_method: 'S256'
         });
 
+        console.log('Authorization request params:', Object.fromEntries(params));
         window.location.href = `${AUTH_CONFIG.authServerUrl}/application/o/authorize/?${params.toString()}`;
     } catch (error) {
         console.error('Error starting authentication:', error);
@@ -70,8 +86,9 @@ export async function exchangeCodeForToken(): Promise<User> {
         const state = urlParams.get('state');
         const storedState = sessionStorage.getItem(STORAGE_KEYS.STATE);
         const codeVerifier = sessionStorage.getItem(STORAGE_KEYS.CODE_VERIFIER);
+        const redirectUri = sessionStorage.getItem(STORAGE_KEYS.REDIRECT_URI);
 
-        if (!code || !state || !storedState || !codeVerifier) {
+        if (!code || !state || !storedState || !codeVerifier || !redirectUri) {
             throw new Error('Missing required parameters');
         }
 
@@ -79,22 +96,28 @@ export async function exchangeCodeForToken(): Promise<User> {
             throw new Error('State mismatch');
         }
 
+        const tokenParams = new URLSearchParams({
+            grant_type: 'authorization_code',
+            client_id: AUTH_CONFIG.clientId,
+            code_verifier: codeVerifier,
+            code,
+            redirect_uri: redirectUri,
+        });
+
+        console.log('Token exchange params:', Object.fromEntries(tokenParams));
+
         const tokenResponse = await fetch(`${AUTH_CONFIG.authServerUrl}/application/o/token/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: new URLSearchParams({
-                grant_type: 'authorization_code',
-                client_id: AUTH_CONFIG.clientId,
-                code_verifier: codeVerifier,
-                code,
-                redirect_uri: AUTH_CONFIG.redirectUri,
-            }),
+            body: tokenParams,
         });
 
         if (!tokenResponse.ok) {
-            throw new Error('Failed to exchange code for token');
+            const errorData = await tokenResponse.json();
+            console.error('Token exchange error:', errorData);
+            throw new Error(`Failed to exchange code for token: ${errorData.error_description || errorData.error}`);
         }
 
         const tokenData = await tokenResponse.json();
@@ -110,7 +133,7 @@ export async function exchangeCodeForToken(): Promise<User> {
             throw new Error('Failed to fetch user info');
         }
 
-        const userInfo = await userInfoResponse.json();
+        const userInfo = await userInfoResponse.json() as AuthentikUserProfile;
 
         const user: User = {
             access_token: tokenData.access_token,
@@ -125,6 +148,7 @@ export async function exchangeCodeForToken(): Promise<User> {
         // Clean up state and code verifier
         sessionStorage.removeItem(STORAGE_KEYS.STATE);
         sessionStorage.removeItem(STORAGE_KEYS.CODE_VERIFIER);
+        sessionStorage.removeItem(STORAGE_KEYS.REDIRECT_URI);
 
         return user;
     } catch (error) {
@@ -138,10 +162,8 @@ export async function isAuthenticated(): Promise<boolean> {
         const user = await getUser();
         if (!user) return false;
 
-        // Check if token is expired
-        const tokenData = JSON.parse(atob(user.id_token.split('.')[1]));
-        const expirationTime = tokenData.exp * 1000; // Convert to milliseconds
-        return Date.now() < expirationTime;
+        // Check if token is expired using the exp claim from the profile
+        return Date.now() < user.profile.exp * 1000;
     } catch (error) {
         console.error('Error checking authentication:', error);
         return false;
@@ -155,10 +177,8 @@ export async function getUser(): Promise<User | null> {
 
         const user: User = JSON.parse(userStr);
 
-        // Check if token is expired
-        const tokenData = JSON.parse(atob(user.id_token.split('.')[1]));
-        const expirationTime = tokenData.exp * 1000; // Convert to milliseconds
-        user.expired = Date.now() >= expirationTime;
+        // Check if token is expired using the exp claim from the profile
+        user.expired = Date.now() >= user.profile.exp * 1000;
 
         return user;
     } catch (error) {
