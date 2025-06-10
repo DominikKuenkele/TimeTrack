@@ -14,7 +14,7 @@ export const Callback = () => {
             try {
                 const user = await exchangeCodeForToken();
                 if (user?.access_token) {
-                    login(); // Update auth state after successful token exchange
+                    login();
                     navigate('/');
                 } else {
                     throw new Error('No access token received');

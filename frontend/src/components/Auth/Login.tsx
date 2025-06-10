@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAuthorizationUrl } from '../../utils/auth';
+import { startAuthentication } from '../../utils/auth';
 import { useAuth } from '../AuthContext';
 
 export const Login = () => {
@@ -9,18 +9,14 @@ export const Login = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // If already authenticated, redirect to home
         if (isLoggedIn) {
             navigate('/');
             return;
         }
 
-        // Start the OAuth flow
         const startAuth = async () => {
             try {
-                const authUrl = await getAuthorizationUrl();
-                // Use window.location.replace instead of href to prevent adding to history
-                window.location.replace(authUrl);
+                await startAuthentication();
             } catch (error) {
                 console.error('Failed to start authentication:', error);
                 setError('Failed to start authentication. Please try again.');

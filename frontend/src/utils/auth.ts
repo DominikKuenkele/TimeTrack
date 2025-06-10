@@ -18,29 +18,28 @@ const userManager = new UserManager({
     }
 });
 
-// Generate authorization URL and start login
-export async function getAuthorizationUrl(): Promise<string> {
+export async function startAuthentication(): Promise<void> {
     try {
         await userManager.signinRedirect();
-        // This URL won't be used as signinRedirect handles the redirect
-        return AUTH_CONFIG.authServerUrl;
     } catch (error) {
         console.error('Error starting authentication:', error);
         throw error;
     }
 }
 
-// Handle the callback and exchange code for token
 export async function exchangeCodeForToken(): Promise<User> {
     try {
-        return await userManager.signinRedirectCallback();
+        const user = await userManager.signinCallback();
+        if (!user) {
+            throw new Error('No user returned from authentication callback');
+        }
+        return user;
     } catch (error) {
         console.error('Error exchanging code for token:', error);
         throw error;
     }
 }
 
-// Check if user is authenticated
 export async function isAuthenticated(): Promise<boolean> {
     try {
         const user = await userManager.getUser();
@@ -51,7 +50,6 @@ export async function isAuthenticated(): Promise<boolean> {
     }
 }
 
-// Get the current user
 export async function getUser(): Promise<User | null> {
     try {
         return await userManager.getUser();
@@ -61,7 +59,6 @@ export async function getUser(): Promise<User | null> {
     }
 }
 
-// Logout
 export async function logout(): Promise<void> {
     try {
         await userManager.signoutRedirect();
