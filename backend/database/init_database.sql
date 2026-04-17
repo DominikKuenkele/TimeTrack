@@ -3,26 +3,6 @@ CREATE OR REPLACE FUNCTION update_modified_column() RETURNS TRIGGER AS $$ BEGIN 
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
--- Users --
-CREATE TABLE IF NOT EXISTS users (
-    user_id TEXT PRIMARY KEY,
-    hashed_password TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-CREATE TRIGGER update_users_modtime BEFORE
-UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_modified_column();
--- Sessions --
-CREATE TABLE IF NOT EXISTS sessions (
-    session_id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
-);
-CREATE TRIGGER update_sessions_modtime BEFORE
-UPDATE ON sessions FOR EACH ROW EXECUTE FUNCTION update_modified_column();
 -- Projects --
 CREATE TABLE IF NOT EXISTS projects (
     project_id SERIAL PRIMARY KEY,
@@ -31,7 +11,6 @@ CREATE TABLE IF NOT EXISTS projects (
     started_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
-    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
     UNIQUE(user_id, name)
 );
 CREATE TRIGGER update_projects_modtime BEFORE
@@ -55,7 +34,6 @@ CREATE TABLE IF NOT EXISTS worktime (
     break_time INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
-    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE,
     PRIMARY KEY (user_id, day)
 );
 CREATE TRIGGER update_worktime_modtime BEFORE
