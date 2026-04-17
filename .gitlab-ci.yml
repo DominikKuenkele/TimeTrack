@@ -5,18 +5,18 @@ build_frontend:
   stage: build
   image:
     name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]
+    entrypoint: [ "" ]
   script:
     - echo "VITE_API_URL=${VITE_API_URL}" > ${CI_PROJECT_DIR}/frontend/.env
     - echo "VITE_NODE_ENV=${VITE_NODE_ENV}" >> ${CI_PROJECT_DIR}/frontend/.env
-    - echo "VITE_AUTH_CLIENT_ID=${VITE_AUTH_CLIENT_ID}" >> ${CI_PROJECT_DIR}/frontend/.env
-    - echo "VITE_AUTH_SERVER_URL=${VITE_AUTH_SERVER_URL}" >> ${CI_PROJECT_DIR}/frontend/.env
-    - /kaniko/executor
-      --context "${CI_PROJECT_DIR}/frontend"
-      --dockerfile "${CI_PROJECT_DIR}/frontend/Dockerfile"
-      --destination "${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_TAG}"
-      --destination "${CI_REGISTRY_IMAGE}/frontend:latest"
-      --build-arg STAGE=prod
+    - echo "VITE_OIDC_AUTHORITY=${VITE_OIDC_AUTHORITY}" >>
+      ${CI_PROJECT_DIR}/frontend/.env
+    - echo "VITE_OIDC_CLIENT_ID=${VITE_OIDC_CLIENT_ID}" >>
+      ${CI_PROJECT_DIR}/frontend/.env
+    - /kaniko/executor --context "${CI_PROJECT_DIR}/frontend" --dockerfile
+      "${CI_PROJECT_DIR}/frontend/Dockerfile" --destination
+      "${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_TAG}" --destination
+      "${CI_REGISTRY_IMAGE}/frontend:latest" --build-arg STAGE=prod
   rules:
     - if: $CI_COMMIT_TAG
 
@@ -24,13 +24,11 @@ build_backend:
   stage: build
   image:
     name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]
+    entrypoint: [ "" ]
   script:
-    - /kaniko/executor
-      --context "${CI_PROJECT_DIR}/backend"
-      --dockerfile "${CI_PROJECT_DIR}/backend/Dockerfile"
-      --destination "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_TAG}"
-      --destination "${CI_REGISTRY_IMAGE}/backend:latest"
-      --build-arg STAGE=prod
+    - /kaniko/executor --context "${CI_PROJECT_DIR}/backend" --dockerfile
+      "${CI_PROJECT_DIR}/backend/Dockerfile" --destination
+      "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_TAG}" --destination
+      "${CI_REGISTRY_IMAGE}/backend:latest" --build-arg STAGE=prod
   rules:
     - if: $CI_COMMIT_TAG
