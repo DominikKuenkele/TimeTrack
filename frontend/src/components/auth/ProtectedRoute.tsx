@@ -1,6 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { isAuthenticated } from '../../utils/auth';
+import { ReactNode, useEffect } from 'react';
 import { useAuth } from '../AuthContext';
 
 interface ProtectedRouteProps {
@@ -8,27 +6,15 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-    const { isLoggedIn, isLoading } = useAuth();
-    const [isAuthChecked, setIsAuthChecked] = useState(false);
-    const [isAuthed, setIsAuthed] = useState(false);
+    const { isLoggedIn, isLoading, login } = useAuth();
 
     useEffect(() => {
-        const checkAuth = async () => {
-            try {
-                const authed = await isAuthenticated();
-                setIsAuthed(authed);
-            } catch (error) {
-                console.error('Error checking authentication:', error);
-                setIsAuthed(false);
-            } finally {
-                setIsAuthChecked(true);
-            }
-        };
+        if (!isLoading && !isLoggedIn) {
+            login();
+        }
+    }, [isLoading, isLoggedIn]);
 
-        checkAuth();
-    }, []);
-
-    if (isLoading || !isAuthChecked) {
+    if (isLoading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
@@ -39,9 +25,9 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         );
     }
 
-    if (!isLoggedIn || !isAuthed) {
-        return <Navigate to="/auth/login" replace />;
+    if (!isLoggedIn) {
+        return null;
     }
 
     return <>{children}</>;
-}; 
+};

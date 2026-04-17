@@ -47,16 +47,14 @@ func main() {
 
 	authenticatorAPI, err := authentification.BuildAuthenticator(
 		logger,
-		database,
-		cfg.EnableCreateUser,
 		cfg.OAuthServerURL,
+		cfg.OAuthDiscoveryURL,
 		cfg.OAuthClientID,
 	)
 	if err != nil {
 		logger.Error(err.Error())
 		return
 	}
-	server.AddHandler(authentification.Prefix+"/", authenticatorAPI.HTTPHandler)
 
 	projectAPI, err := projects.BuildProject(logger, database)
 	if err != nil {

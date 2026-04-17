@@ -62,7 +62,8 @@ async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Pr
         throw new Error(`API request failed: ${response.statusText}`);
     }
 
-    return response.json();
+    const text = await response.text();
+    return text ? JSON.parse(text) : (null as unknown as T);
 }
 
 export const api = {
@@ -130,22 +131,20 @@ export const projectService = {
         }
     },
 
-    startProject: async (projectName: string): Promise<Project> => {
+    startProject: async (projectName: string): Promise<void> => {
         try {
             const encodedName = encodeURIComponent(projectName);
-            const response = await api.post<Project>(`/projects/${encodedName}/start`);
-            return mapProject(response);
+            await api.post<void>(`/projects/${encodedName}/start`);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
         }
     },
 
-    stopProject: async (projectName: string): Promise<Project> => {
+    stopProject: async (projectName: string): Promise<void> => {
         try {
             const encodedName = encodeURIComponent(projectName);
-            const response = await api.post<Project>(`/projects/${encodedName}/stop`);
-            return mapProject(response);
+            await api.post<void>(`/projects/${encodedName}/stop`);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;
@@ -186,53 +185,4 @@ export const activityService = {
     },
 };
 
-export const userService = {
-    login: async (username = "", password = ""): Promise<void> => {
-        try {
-            const data = {
-                "username": username,
-                "password": password
-            }
-
-            await api.post<void>('/user/login', data);
-        } catch (error) {
-            logErrorIfNeeded(error);
-            throw error;
-        }
-    },
-
-    logout: async (): Promise<void> => {
-        try {
-            await api.post<void>('/user/logout');
-        } catch (error) {
-            logErrorIfNeeded(error);
-            throw error;
-        }
-    },
-
-    createUser: async (username = "", password = ""): Promise<void> => {
-        try {
-            const data = {
-                "username": username,
-                "password": password
-            }
-
-            await api.post<void>('/user/create', data);
-        } catch (error) {
-            logErrorIfNeeded(error);
-            throw error;
-        }
-    },
-
-    validate: async (): Promise<boolean> => {
-        try {
-            const response = await api.get<boolean>('/user/validate');
-            return response;
-        } catch (error) {
-            logErrorIfNeeded(error);
-            throw error;
-        }
-    },
-};
-
-export default api; 
+export default api;

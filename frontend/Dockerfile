@@ -1,15 +1,26 @@
-FROM node:22 AS build
+FROM node:lts-alpine AS build
 
 WORKDIR /app
 
-COPY package.json ./
-COPY yarn.lock ./  
+COPY package.json package-lock.json ./
 
-RUN yarn install
+RUN npm ci
 
 COPY . .
 
-RUN yarn build
+RUN npm run build
+
+FROM node:lts-alpine AS dev
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+
+RUN npm ci
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 
 FROM nginx:alpine AS prod
 

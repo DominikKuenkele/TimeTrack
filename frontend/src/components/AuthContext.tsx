@@ -1,5 +1,5 @@
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { userService } from '../services/api';
+import React, { createContext, ReactNode, useContext } from 'react';
+import { useAuth as useOidcAuth } from 'react-oidc-context';
 
 interface AuthContextType {
     isLoggedIn: boolean;
@@ -11,38 +11,18 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(true);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const auth = useOidcAuth();
 
-    const validateSession = async (): Promise<void> => {
-        try {
-            setIsLoading(true);
-            const validSession = await userService.validate();
-            setIsLoggedIn(validSession);
-        } catch (err: unknown) {
-            console.log(err)
-            setIsLoggedIn(false);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        validateSession()
-    }, [])
-
-    const login = () => setIsLoggedIn(true);
-    const logout = async () => {
-        try {
-            await userService.logout();
-            setIsLoggedIn(false);
-        } catch (err: unknown) {
-            console.error(err);
-        };
-    }
+    const login = () => auth.signinRedirect();
+    const logout = async () => { await auth.signoutRedirect(); };
 
     return (
-        <AuthContext.Provider value={{ isLoggedIn, isLoading, login, logout }}>
+        <AuthContext.Provider value={{
+            isLoggedIn: auth.isAuthenticated,
+            isLoading: auth.isLoading,
+            login,
+            logout,
+        }}>
             {children}
         </AuthContext.Provider>
     );

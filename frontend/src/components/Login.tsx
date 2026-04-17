@@ -1,60 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { userService } from '../services/api';
-import { extractErrorMessage } from '../utils/errorUtils';
+import { useEffect } from 'react';
+import { redirect } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import './Login.css';
 
-
-const Login: React.FC = () => {
+export const Login = () => {
     const { isLoggedIn, login } = useAuth();
-    const navigate = useNavigate();
-
-    const [username, setUsername] = useState<string>('');
-    const [password, setPassword] = useState<string>('');
-
-    const [error, setError] = useState<string | null>(null);
-
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        try {
-            await userService.login(username, password);
-            setError(null);
-            login();
-        } catch (err: unknown) {
-            const errorMessage = extractErrorMessage(err, "Failed to login");
-            setError(errorMessage);
-            console.error(err);
-        }
-    };
 
     useEffect(() => {
         if (isLoggedIn) {
-            navigate("/");
+            redirect('/');
+            return;
         }
-    }, [isLoggedIn, navigate]);
+        // Kick off the OIDC redirect flow
+        login();
+    }, [isLoggedIn]);
 
     return (
-        <div className="login-container">
-            <form onSubmit={handleLogin} className="login-form">
-                <input
-                    type="text"
-                    placeholder="Username"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                />
-                <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
-                {error && <div className="login-error">{error}</div>}
-                <button type="submit">Login</button>
-            </form>
+        <div className="flex items-center justify-center min-h-screen">
+            <div className="text-center">
+                <h1 className="text-2xl font-bold mb-4">Redirecting to login...</h1>
+                <p className="text-gray-600">Please wait while we redirect you to the login page.</p>
+            </div>
         </div>
     );
 };
-
-export default Login;

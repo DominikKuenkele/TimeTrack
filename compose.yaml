@@ -1,0 +1,136 @@
+# Dev environment — prerequisites: docker
+# After first start, wait ~60 s for Authentik to bootstrap, then log in at
+# http://localhost:9000 with akadmin / akadmin
+services:
+  backend:
+    build:
+      context: ./backend
+      target: debug
+    ports:
+      - "8080:80"
+      - "2345:2345"
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_USER: timetrack
+      POSTGRES_PASSWORD: timetrack
+      POSTGRES_DB: timetrack
+      LOG_LEVEL: debug
+      LOG_FILE: timetrack.log
+      FRONTEND_ADDRESS: http://localhost:3000
+      OAUTH_SERVER_URL: http://localhost:9000/application/o/timetrack/
+      OAUTH_DISCOVERY_URL: http://authentik-server:9000/application/o/timetrack/
+      OAUTH_CLIENT_ID: timetrack-local-dev
+    depends_on:
+      db:
+        condition: service_healthy
+      authentik-server:
+        condition: service_healthy
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      # Isolate container node_modules from the host to avoid arch conflicts
+      - frontend_node_modules:/app/node_modules
+
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: timetrack
+      POSTGRES_PASSWORD: timetrack
+      POSTGRES_DB: timetrack
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./backend/database:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U timetrack -d timetrack" ]
+      interval: 2s
+      retries: 5
+
+  authentik-postgresql:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_DB: authentik
+      POSTGRES_PASSWORD: authentik
+      POSTGRES_USER: authentik
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    volumes:
+      - authentik_db:/var/lib/postgresql/data
+
+  authentik-server:
+    image: ghcr.io/goauthentik/server:2026.2.2
+    command: server
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgresql
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_SECRET_KEY: dev-secret-key-do-not-use-in-production
+      AUTHENTIK_BOOTSTRAP_PASSWORD: akadmin
+      AUTHENTIK_BOOTSTRAP_EMAIL: admin@timetrack.local
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    depends_on:
+      authentik-postgresql:
+        condition: service_healthy
+    restart: unless-stopped
+    shm_size: 512mb
+    healthcheck:
+      test: [ "CMD-SHELL", "ak healthcheck || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - ./backend/docker/authentik/data:/data
+      - ./backend/docker/authentik/custom-templates:/templates
+      - ./backend/docker/authentik/blueprints:/blueprints/custom
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:2026.2.2
+    command: worker
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: authentik-postgresql
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_SECRET_KEY: dev-secret-key-do-not-use-in-production
+      AUTHENTIK_BOOTSTRAP_PASSWORD: akadmin
+      AUTHENTIK_BOOTSTRAP_EMAIL: admin@timetrack.local
+    restart: unless-stopped
+    shm_size: 512mb
+    user: root
+    depends_on:
+      authentik-postgresql:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./backend/docker/authentik/data:/data
+      - ./backend/docker/authentik/certs:/certs
+      - ./backend/docker/authentik/custom-templates:/templates
+      - ./backend/docker/authentik/blueprints:/blueprints/custom
+
+volumes:
+  postgres_data:
+  authentik_db:
+    driver: local
+  frontend_node_modules:
+    driver: local

@@ -9,7 +9,7 @@ const Header: React.FC = () => {
 
     const logoutAction = async () => {
         await logout();
-        navigate('/login');
+        navigate('/');
     }
 
     return (
@@ -23,7 +23,7 @@ const Header: React.FC = () => {
                     <Link to="/activities">Activities</Link>
                     {isLoggedIn
                         ? <button onClick={logoutAction}>Logout</button>
-                        : <Link to="/login">Login</Link>
+                        : <Link to="/auth/login">Login</Link>
                     }
                 </nav>
             </div>
