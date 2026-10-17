@@ -62,9 +62,12 @@ test.describe('create', () => {
         'q?x=1&y=2#frag',
         'plus+and=equals',
         '"quotes" and \'apostrophes\'',
-        '<b>html</b>',
+        '<img src=x onerror=alert(1)>',
         'back\\slash',
         'dots..and..more',
+        // decoded once only, not turned into "A"
+        '%41',
+        '100%',
     ];
     for (const special of specialNames) {
         test(`handles the name "${special}"`, async ({ login }) => {
@@ -88,20 +91,32 @@ test.describe('create', () => {
         });
     }
 
-    // Known limitation of the path based API: after decoding, these names are not one path segment
-    // (or not a valid escape sequence), so the backend rejects them. They must not end up as broken projects.
-    for (const rejected of ['with/slash', '100%', '%41']) {
+    // Project names must not contain a slash
+    for (const rejected of ['with/slash', '<b>html</b>']) {
         test(`rejects the name "${rejected}" with an error`, async ({ login }) => {
             const { page, api } = await login('alice');
             const name = `${uniqueName()}-${rejected}`;
 
             await createProject(page, name);
 
-            await expect(page.locator('.create-project-form .error')).toContainText('Error:');
+            await expect(page.locator('.create-project-form .error')).toHaveText("Error: Project name must not contain '/'.");
             await expect(projectItem(page, name)).toHaveCount(0);
             expect((await api.projects(name.slice(0, 10))).projects.map((p) => p.name)).not.toContain(name);
         });
     }
+
+    test('the API rejects a slash in the name instead of reading it as a path', async ({ login }) => {
+        const { api } = await login('alice');
+        const name = await api.createProject(uniqueName());
+
+        // "<name>/start" as one encoded segment is a name, not the start of <name>
+        const response = await api.raw('POST', `/projects/${encodeURIComponent(`${name}/start`)}`);
+
+        expect(response.status()).toBe(400);
+        const { activeProject, projects } = await api.projects(name);
+        expect(activeProject).toBeUndefined();
+        expect(projects.map((p) => p.name)).toEqual([name]);
+    });
 });
 
 test.describe('delete', () => {

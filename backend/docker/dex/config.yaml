@@ -1,0 +1,41 @@
+# Dex of the dev stack (compose.yaml): the OIDC provider of the app, with in-memory storage and static users.
+# Users: dev@timetrack.local and dev2@timetrack.local, password "dev". Hashes: `htpasswd -bnBC 10 "" <password>`
+# The e2e stack uses config.e2e.yaml instead; keep the two in sync apart from the URLs and the users.
+issuer: http://localhost:5556/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+  # The app talks to Dex from the browser (discovery, token, userinfo)
+  allowedOrigins: ["*"]
+
+telemetry:
+  http: 0.0.0.0:5558
+
+expiry:
+  # Dex keeps no login session, so the app can't silently get a new token: one token lasts the working day
+  idTokens: 24h
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: timetrack-local-dev
+    name: TimeTrack
+    public: true
+    redirectURIs:
+      - http://localhost:3000/auth/callback
+
+enablePasswordDB: true
+
+staticPasswords:
+  - email: dev@timetrack.local
+    username: dev
+    userID: dev
+    hash: "$2y$10$S5vou6RwJDnh6glzEw1nN.qTHwmv/T3RImmPq9xRXXeu.TxUOsF.y"
+  - email: dev2@timetrack.local
+    username: dev2
+    userID: dev2
+    hash: "$2y$10$S5vou6RwJDnh6glzEw1nN.qTHwmv/T3RImmPq9xRXXeu.TxUOsF.y"

@@ -23,24 +23,21 @@ export default defineConfig({
         locale: 'en-US',
         trace: 'on-first-retry',
         actionTimeout: 10_000,
+        ...devices['Desktop Chrome'],
+        // For both projects: the logins of the setup need the same browser as the tests. The full Chromium, as the
+        // headless shell (Playwright's default) ignores the secure origin flag below.
+        channel: 'chromium',
+        launchOptions: {
+            args: [
+                '--disable-dev-shm-usage',
+                // oidc-client-ts needs crypto.subtle (PKCE), which browsers only offer on https and
+                // localhost; the app is served by its service name here
+                `--unsafely-treat-insecure-origin-as-secure=${BASE_URL}`,
+            ],
+        },
     },
     projects: [
         { name: 'setup', testMatch: /auth\.setup\.ts/ },
-        {
-            name: 'chromium',
-            dependencies: ['setup'],
-            testMatch: /.*\.spec\.ts/,
-            use: {
-                ...devices['Desktop Chrome'],
-                launchOptions: {
-                    args: [
-                        '--disable-dev-shm-usage',
-                        // oidc-client-ts needs crypto.subtle (PKCE), which browsers only offer on https and
-                        // localhost; the app is served by its service name here
-                        `--unsafely-treat-insecure-origin-as-secure=${BASE_URL}`,
-                    ],
-                },
-            },
-        },
+        { name: 'chromium', dependencies: ['setup'], testMatch: /.*\.spec\.ts/ },
     ],
 });

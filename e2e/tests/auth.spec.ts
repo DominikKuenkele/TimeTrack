@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { passwordField, projectsHeading, submitLoginForm, usernameField } from '../support/auth';
-import { API_URL, AUTHENTIK_URL } from '../support/env';
+import { emailField, projectsHeading, submitLoginForm } from '../support/auth';
+import { API_URL, DEX_URL } from '../support/env';
 import { PASSWORD, users } from '../support/users';
 
 // These tests start without any session and use the real login form
@@ -10,8 +10,8 @@ test.describe('login', () => {
         test(`${path} sends a logged-out user to the login`, async ({ page }) => {
             await page.goto(path);
 
-            await expect(page).toHaveURL(new RegExp(`^${AUTHENTIK_URL}/`));
-            await expect(usernameField(page)).toBeVisible();
+            await expect(page).toHaveURL(new RegExp(`^${DEX_URL}/`));
+            await expect(emailField(page)).toBeVisible();
         });
     }
 
@@ -40,20 +40,17 @@ test.describe('login', () => {
         await page.goto('/');
         await submitLoginForm(page, users.alice, `${PASSWORD}-wrong`);
 
-        await expect(passwordField(page)).toBeVisible();
-        await expect(page).toHaveURL(new RegExp(`^${AUTHENTIK_URL}/`));
+        await expect(page.getByText('Invalid Email Address and password.')).toBeVisible();
+        await expect(page).toHaveURL(new RegExp(`^${DEX_URL}/`));
         await expect(projectsHeading(page)).toHaveCount(0);
     });
 
     test('rejects an unknown user', async ({ page }) => {
         await page.goto('/');
-        await usernameField(page).fill('e2e-nobody');
-        await page.getByRole('button', { name: /continue|log in/i }).click();
-        // Authentik asks for the password first, so that it doesn't reveal which users exist
-        await passwordField(page).fill(PASSWORD);
-        await page.getByRole('button', { name: /continue|log in/i }).click();
+        await submitLoginForm(page, 'e2e-nobody@timetrack.local', PASSWORD);
 
-        await expect(page).toHaveURL(new RegExp(`^${AUTHENTIK_URL}/`));
+        await expect(page.getByText('Invalid Email Address and password.')).toBeVisible();
+        await expect(page).toHaveURL(new RegExp(`^${DEX_URL}/`));
         await expect(projectsHeading(page)).toHaveCount(0);
     });
 });
@@ -66,15 +63,16 @@ test.describe('logout', () => {
 
         await page.getByRole('button', { name: 'Logout' }).click();
 
-        // The app forgets the user ...
-        await expect.poll(() => page.evaluate(
-            () => Object.keys(window.localStorage).filter((k) => k.startsWith('oidc.user:')).length,
-        ).catch(() => 0)).toBe(0);
+        // The app forgets the user and sends them to the login right away ...
+        await expect(page).toHaveURL(new RegExp(`^${DEX_URL}/`));
+        await expect(emailField(page)).toBeVisible();
+        const { origins } = await page.context().storageState();
+        expect(origins.flatMap((origin) => origin.localStorage).filter(({ name }) => name.startsWith('oidc.user:'))).toEqual([]);
 
-        // ... and so does Authentik: opening the app asks for the credentials again
+        // ... and opening the app again asks for the credentials as well
         await page.goto('/projects');
-        await expect(usernameField(page)).toBeVisible();
-        await expect(projectsHeading(page)).toHaveCount(0);
+        await expect(page).toHaveURL(new RegExp(`^${DEX_URL}/`));
+        await expect(emailField(page)).toBeVisible();
     });
 });
 

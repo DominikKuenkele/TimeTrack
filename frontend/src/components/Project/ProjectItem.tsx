@@ -48,7 +48,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
                 err,
                 `Failed to start project "${project.name}"`
             );
-            setError(errorMessage);
+            setError(`Error: ${errorMessage}`);
             console.error(err);
         }
     };
@@ -63,7 +63,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
                 err,
                 `Failed to stop project "${project.name}"`
             );
-            setError(errorMessage);
+            setError(`Error: ${errorMessage}`);
             console.error(err);
         }
     };
@@ -79,7 +79,7 @@ const ProjectItem: React.FC<ProjectItemProps> = ({ project, onProjectUpdated, cl
                 err,
                 `Failed to delete project "${project.name}"`
             );
-            setError(errorMessage);
+            setError(`Error: ${errorMessage}`);
             console.error(err);
             setDeleteConfirmation(true);
         }

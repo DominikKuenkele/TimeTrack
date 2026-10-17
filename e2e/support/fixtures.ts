@@ -11,7 +11,7 @@ export interface Session {
 }
 
 interface Fixtures {
-    // Opens the app as a user, logged in by the Authentik session saved by auth.setup.ts
+    // Opens the app as a user, with the token saved by auth.setup.ts
     login: (user: UserKey, path?: string) => Promise<Session>;
 }
 
@@ -27,8 +27,6 @@ export const test = base.extend<Fixtures>({
                 locale: 'en-US',
             });
             const page = await context.newPage();
-            // The saved state only holds the Authentik session: the app sends the browser to Authentik,
-            // which sends it right back with a new token
             await page.goto(path);
             await projectsHeading(page).or(page.getByRole('heading', { name: 'Activities', level: 2 })).waitFor({ timeout: 30_000 });
 

@@ -92,12 +92,10 @@ describe('error handling', () => {
 });
 
 describe('projectService.createProject', () => {
-    it('maps the created project and encodes the name', async () => {
-        fetchMock.mockResolvedValue(respond({ ...project, startedAt: '2025-01-01T10:00:00Z' }));
+    it('accepts the empty response of the backend and encodes the name', async () => {
+        fetchMock.mockResolvedValue(new Response('', { status: 201 }));
 
-        const result = await projectService.createProject('my/project');
-
-        expect(result.startedAt).toEqual(new Date('2025-01-01T10:00:00Z'));
+        await expect(projectService.createProject('my/project')).resolves.toBeUndefined();
         expect(String(fetchMock.mock.calls[0][0])).toContain('/projects/my%2Fproject');
     });
 

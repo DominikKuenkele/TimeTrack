@@ -16,6 +16,7 @@ const ActivityOverview: React.FC = () => {
         breaktime: 0,
         overtime: 0,
     });
+    const [loadedDay, setLoadedDay] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const [day, setDay] = useState<Date>(new Date());
@@ -40,6 +41,7 @@ const ActivityOverview: React.FC = () => {
             .then((data) => {
                 if (cancelled) return;
                 setDailyActivities(data);
+                setLoadedDay(dateToDayString(day));
                 setError(null);
             })
             .catch((err: unknown) => {
@@ -59,7 +61,7 @@ const ActivityOverview: React.FC = () => {
     }, []);
 
     return (
-        <div className="activity-overview">
+        <div className="activity-overview" data-day={loadedDay ?? undefined}>
             <h2>Activities</h2>
 
             <div className="activity-overview-header">

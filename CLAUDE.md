@@ -2,7 +2,8 @@
 
 Time tracking for projects. `backend/pkg/` is a Go REST API on Postgres (schema in
 `backend/database/init_database.sql`), `frontend/` a React + TypeScript app built with Vite. Login
-goes through Authentik (OIDC); `compose.yaml` runs the whole dev stack including Authentik.
+goes through OIDC; `compose.yaml` runs the whole dev stack including Dex as the provider
+(`backend/docker/dex/`, static users, no login session and no logout endpoint).
 
 ## Checks
 
@@ -11,7 +12,7 @@ goes through Authentik (OIDC); `compose.yaml` runs the whole dev stack including
 - `task fe:lint` / `fe:build`: ESLint (no warnings allowed), `tsc` and the Vite build.
 - `task up`: the dev stack (`docker compose`).
 - `task test:e2e`: Playwright tests in `e2e/` against the whole stack (`compose.yaml` plus
-  `compose.e2e.yaml`: no mounts, service-name URLs, Authentik test users from `blueprints-e2e/`). Needs
+  `compose.e2e.yaml`: no mounts, service-name URLs, Dex test users from `config.e2e.yaml`). Needs
   docker; CI runs it as the `e2e` job. Not part of `task check`.
 
 ## Releasing
@@ -36,6 +37,6 @@ When you run as the GitLab agent (implementing an issue in CI, not in a session 
 
 - The design discussion already happened: the issue was judged clear enough, or its plan was
   approved. Implement it; don't stop to ask.
-- You run in the CI check image (Go, Node, `task`), without Postgres or Authentik. Run the checks
+- You run in the CI check image (Go, Node, `task`), without Postgres or Dex. Run the checks
   above for what you change; never `task up` or `task test:e2e` (no docker; the MR pipeline's `e2e` job
   runs them). Type-check e2e changes with `npm run lint` in `e2e/`.

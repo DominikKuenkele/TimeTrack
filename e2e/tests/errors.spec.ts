@@ -1,6 +1,7 @@
 import { Page, Route } from '@playwright/test';
-import { API_URL, AUTHENTIK_URL, BASE_URL } from '../support/env';
-import { projectsHeading } from '../support/auth';
+import { API_URL, BASE_URL } from '../support/env';
+import { emailField, projectsHeading, submitLoginForm } from '../support/auth';
+import { users } from '../support/users';
 import { expect, test } from '../support/fixtures';
 import { pastDay, uniqueName } from '../support/names';
 import { activityItem, createProject, goToActivities, openChangeDialogue, projectItem, submitChange } from '../support/ui';
@@ -71,7 +72,7 @@ test.describe('backend returns an error', () => {
 
         await projectItem(page, name).getByRole('button', { name: 'Start' }).click();
 
-        await expect(projectItem(page, name).locator('.error')).toContainText('API request failed');
+        await expect(projectItem(page, name).locator('.error')).toContainText('Error: API request failed');
         await expect(projectItem(page, name)).toContainText('Inactive');
         // the other projects don't show the error
         await expect(projectItem(page, other).locator('.error')).toHaveCount(0);
@@ -87,7 +88,7 @@ test.describe('backend returns an error', () => {
         await item.getByRole('button', { name: 'Delete' }).click();
         await item.getByRole('button', { name: 'Yes, Delete' }).click();
 
-        await expect(item.locator('.confirmation-error')).toContainText('API request failed');
+        await expect(item.locator('.confirmation-error')).toContainText('Error: API request failed');
         await expect(item).toBeVisible();
         expect((await api.projects(name)).total).toBe(1);
     });
@@ -147,7 +148,7 @@ test.describe('backend is not reachable', () => {
         await expect(page.locator('.create-project-form .error')).toContainText('Error:');
 
         await projectItem(page, name).getByRole('button', { name: 'Start' }).click();
-        await expect(projectItem(page, name).locator('.error')).toContainText('Error:');
+        await expect(projectItem(page, name).locator('.error')).toContainText('Error: Failed to fetch');
         await expect(projectItem(page, name)).toContainText('Inactive');
     });
 });
@@ -165,10 +166,10 @@ test.describe('token is not accepted', () => {
                 window.localStorage.setItem(key, JSON.stringify(user));
             }, reason === 'has expired');
 
-            // the app is sent to Authentik, whose session is still valid, and comes back with a new token
-            const authorize = page.waitForRequest((request) => request.url().startsWith(AUTHENTIK_URL) && request.url().includes('/authorize'));
+            // the app sends the user to the login of Dex and comes back with a new token
             await page.reload();
-            await authorize;
+            await expect(emailField(page)).toBeVisible();
+            await submitLoginForm(page, users.alice);
 
             await expect(projectsHeading(page)).toBeVisible({ timeout: 30_000 });
             await expect(projectItem(page, name)).toBeVisible();

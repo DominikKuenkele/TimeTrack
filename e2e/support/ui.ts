@@ -13,7 +13,14 @@ export const searchProjects = (page: Page, term: string) => page.getByPlaceholde
 export const goToActivities = async (page: Page, day?: string) => {
     await page.getByRole('link', { name: 'Activities' }).click();
     await expect(page.getByRole('heading', { name: 'Activities', level: 2 })).toBeVisible();
-    if (day) await page.locator('input[type="date"]').fill(day);
+    if (day) await selectDay(page, day);
+    else await expect(page.locator('.activity-overview[data-day]')).toBeAttached();
+};
+
+// The summary and the list show the previous day until the activities of the selected one are loaded
+export const selectDay = async (page: Page, day: string) => {
+    await page.locator('input[type="date"]').fill(day);
+    await expect(page.locator(`.activity-overview[data-day="${day}"]`)).toBeAttached();
 };
 
 export const activityItems = (page: Page) => page.locator('.activity-item');

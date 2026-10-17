@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -43,6 +42,7 @@ func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	// Path is decoded already, the segments are not decoded again
 	pathSegments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 
 	var (
@@ -52,13 +52,7 @@ func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if len(pathSegments) > 1 {
-		idString, err := url.PathUnescape(pathSegments[1])
-		if err != nil {
-			a.sendInvalidInputResponse(w, fmt.Errorf("couldn't parse activity id '%s'", pathSegments[1]))
-			return
-		}
-
-		id, err = strconv.Atoi(idString)
+		id, err = strconv.Atoi(pathSegments[1])
 		if err != nil {
 			a.sendInvalidInputResponse(w, fmt.Errorf("couldn't parse activity id '%s'", pathSegments[1]))
 			return
@@ -66,11 +60,7 @@ func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(pathSegments) > 2 {
-		action, err = url.PathUnescape(pathSegments[2])
-		if err != nil {
-			a.sendInvalidInputResponse(w, fmt.Errorf("couldn't parse action '%s'", pathSegments[2]))
-			return
-		}
+		action = pathSegments[2]
 	}
 
 	actionFunction, found := actionMap[action]

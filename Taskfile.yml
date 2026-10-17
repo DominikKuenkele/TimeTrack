@@ -20,7 +20,7 @@ tasks:
       - task: fe:check
 
   up:
-    desc: Run the dev stack (backend, frontend, Postgres, Authentik)
+    desc: Run the dev stack (backend, frontend, Postgres, Dex)
     cmds:
       - docker compose up --build
 

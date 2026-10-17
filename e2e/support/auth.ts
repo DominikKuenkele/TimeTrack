@@ -1,24 +1,23 @@
 import { expect, Page } from '@playwright/test';
 import { PASSWORD } from './users';
 
-// The Authentik flow elements live in web components; locators pierce their shadow DOM
-export const usernameField = (page: Page) => page.locator('input[name="uidField"]');
+// The login form of Dex (password connector)
+export const emailField = (page: Page) => page.locator('input[name="login"]');
 export const passwordField = (page: Page) => page.locator('input[name="password"]');
 
 export const projectsHeading = (page: Page) => page.getByRole('heading', { name: 'Projects', level: 2 });
 
-// Fills the Authentik login form of a user and waits until the app is shown again
-export async function submitLoginForm(page: Page, username: string, password = PASSWORD) {
-    await usernameField(page).fill(username);
-    await page.getByRole('button', { name: /continue|log in/i }).click();
+// Fills the Dex login form of a user
+export async function submitLoginForm(page: Page, email: string, password = PASSWORD) {
+    await emailField(page).fill(email);
     await passwordField(page).fill(password);
-    await page.getByRole('button', { name: /continue|log in/i }).click();
+    await page.getByRole('button', { name: 'Login' }).click();
 }
 
-// Opens the app without a session and logs in through Authentik
-export async function login(page: Page, username: string) {
+// Opens the app without a session and logs in through Dex
+export async function login(page: Page, email: string) {
     await page.goto('/');
-    await submitLoginForm(page, username);
+    await submitLoginForm(page, email);
     await expect(projectsHeading(page)).toBeVisible({ timeout: 30_000 });
 }
 

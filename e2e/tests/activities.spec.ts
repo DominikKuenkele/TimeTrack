@@ -1,7 +1,7 @@
 import { expect, test } from '../support/fixtures';
 import { pastDay, shiftDayString, uniqueName } from '../support/names';
 import {
-    activityItem, activityItems, goToActivities, openChangeDialogue, readSummary, submitChange,
+    activityItem, activityItems, goToActivities, openChangeDialogue, readSummary, selectDay, submitChange,
 } from '../support/ui';
 
 test.describe('list', () => {
@@ -169,7 +169,7 @@ test.describe('change', () => {
 
         await expect(item).toHaveCount(0);
         await expect(page.getByText('No activites found.')).toBeVisible();
-        await page.locator('input[type="date"]').fill(otherDay);
+        await selectDay(page, otherDay);
         await expect(activityItem(page, activity.id)).toBeVisible();
     });
 
@@ -238,7 +238,7 @@ test.describe('change', () => {
 
             await submitChange(item, { start: 'half past nine' });
 
-            await expect(item.locator('.change-error')).toHaveText('startedAt invalid');
+            await expect(item.locator('.change-error')).toHaveText('Error: Start time is invalid.');
             await unchanged();
         });
 
@@ -247,7 +247,7 @@ test.describe('change', () => {
 
             await submitChange(item, { start: '' });
 
-            await expect(item.locator('.change-error')).toHaveText('startedAt invalid');
+            await expect(item.locator('.change-error')).toHaveText('Error: Start time is invalid.');
             await unchanged();
         });
 
@@ -256,7 +256,7 @@ test.describe('change', () => {
 
             await submitChange(item, { end: '25:99' });
 
-            await expect(item.locator('.change-error')).toHaveText('endedAt invalid');
+            await expect(item.locator('.change-error')).toHaveText('Error: End time is invalid.');
             await unchanged();
         });
 
@@ -265,7 +265,7 @@ test.describe('change', () => {
 
             await submitChange(item, { project: '   ' });
 
-            await expect(item.locator('.change-error')).toHaveText('Project name cannot be empty.');
+            await expect(item.locator('.change-error')).toHaveText('Error: Project name cannot be empty.');
             await unchanged();
         });
 
@@ -315,7 +315,7 @@ test.describe('worktime and breaktime', () => {
         // a shorter gap doesn't add to the break
         await api.seedActivity(name, day, '17:45', '18:00');
         await page.reload();
-        await page.locator('input[type="date"]').fill(day);
+        await selectDay(page, day);
         await expect(page.locator('.activity-overview-total-runtime')).toContainText('Total Time: 10h 0m 0s (Break: 1h 0m 0s)');
     });
 
@@ -399,16 +399,16 @@ test.describe('overtime', () => {
         // a second activity after a break adds its time but not the break
         await api.seedActivity(name, day, '19:00', '19:30');
         await page.reload();
-        await page.locator('input[type="date"]').fill(day);
+        await selectDay(page, day);
         await expect.poll(async () => Math.abs((await readSummary(page)).overtime - (base + 3600 + 1800))).toBeLessThanOrEqual(tolerance);
         const afterSecond = (await readSummary(page)).overtime;
 
         // a short day lowers the overtime of all days, which is shown on every day
         await api.seedActivity(name, otherDay, '09:00', '15:00');
         await page.reload();
-        await page.locator('input[type="date"]').fill(otherDay);
+        await selectDay(page, otherDay);
         await expect.poll(async () => Math.abs((await readSummary(page)).overtime - (afterSecond - 2 * 3600))).toBeLessThanOrEqual(tolerance);
-        await page.locator('input[type="date"]').fill(day);
+        await selectDay(page, day);
         await expect.poll(async () => Math.abs((await readSummary(page)).overtime - (afterSecond - 2 * 3600))).toBeLessThanOrEqual(tolerance);
 
         await expect(activityItem(page, first.id)).toBeVisible();

@@ -1,5 +1,0 @@
-# Authentik of the e2e stack (compose.e2e.yaml): the dev setup mounts the blueprints, a remote docker daemon can't
-# Must follow the image in compose.yaml
-FROM ghcr.io/goauthentik/server:2026.2.2
-
-COPY blueprints/ blueprints-e2e/ /blueprints/custom/

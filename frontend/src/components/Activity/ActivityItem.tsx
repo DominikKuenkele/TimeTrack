@@ -27,7 +27,7 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, totalRuntime, isS
     const handleCreateProject = async (e: React.FormEvent): Promise<void> => {
         e.preventDefault();
         if (!changedProjectName.trim()) {
-            setError('Project name cannot be empty.');
+            setError('Error: Project name cannot be empty.');
             return;
         }
 
@@ -40,12 +40,12 @@ const ActivityItem: React.FC<ActivityItemProps> = ({ activity, totalRuntime, isS
             }
 
             if (isNaN(changedActivity.startedAt.getTime())) {
-                setError("startedAt invalid")
+                setError('Error: Start time is invalid.');
                 return
             }
 
             if (changedActivity.endedAt && isNaN(changedActivity.endedAt.getTime())) {
-                setError("endedAt invalid")
+                setError('Error: End time is invalid.');
                 return
             }
 

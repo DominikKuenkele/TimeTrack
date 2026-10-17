@@ -1,13 +1,12 @@
 # End-to-end test stack: `docker compose -f compose.yaml -f compose.e2e.yaml` (`task test:e2e`)
 #
-# Builds on the dev stack (same services, same database schema, same Authentik blueprint), with these changes:
+# Builds on the dev stack (same services, same database schema, same Dex client), with these changes:
 # - No bind mounts, no published ports and no debugger: the CI runner talks to a remote rootless docker
 #   daemon, on which paths of the checkout don't exist. What the dev setup mounts is built into images instead.
-# - The browser (the `e2e` service, inside the network) and the backend reach Authentik, the frontend and the
-#   backend by their service names. The issuer of the tokens follows the host of the request, so the backend needs
-#   no separate discovery URL.
+# - The browser (the `e2e` service, inside the network) and the backend reach Dex, the frontend and the backend by
+#   their service names, so the backend needs no separate discovery URL.
 # - Backend and browser run in UTC like the database.
-# - Authentik gets the test users (blueprints-e2e) and only counts as healthy once the app's provider exists.
+# - Dex runs with config.e2e.yaml: the issuer under its service name and the test users.
 services:
   db:
     build:
@@ -26,8 +25,8 @@ services:
     environment:
       TZ: UTC
       FRONTEND_ADDRESS: http://frontend:3000
-      OAUTH_SERVER_URL: http://authentik-server:9000/application/o/timetrack/
-      OAUTH_DISCOVERY_URL: http://authentik-server:9000/application/o/timetrack/
+      OAUTH_SERVER_URL: http://dex:5556/dex
+      OAUTH_DISCOVERY_URL: http://dex:5556/dex
     healthcheck:
       test: [ "CMD-SHELL", "nc -z 127.0.0.1 80" ]
       interval: 2s
@@ -39,7 +38,7 @@ services:
     environment:
       VITE_API_URL: http://backend
       VITE_NODE_ENV: development
-      VITE_OIDC_AUTHORITY: http://authentik-server:9000/application/o/timetrack/
+      VITE_OIDC_AUTHORITY: http://dex:5556/dex
       VITE_OIDC_CLIENT_ID: timetrack-local-dev
     healthcheck:
       # Also compiles the app once, so that Vite doesn't reload the page while the first test runs
@@ -47,40 +46,9 @@ services:
       interval: 2s
       retries: 60
 
-  authentik-postgresql:
-    volumes: !reset []
-
-  authentik-server:
-    build:
-      context: ./backend/docker/authentik
-      dockerfile: Dockerfile.e2e
-    image: timetrack-e2e-authentik
+  dex:
+    command: [ "dex", "serve", "/etc/dex/config.e2e.yaml" ]
     ports: !reset []
-    volumes: !reset []
-    # The worker applies the blueprints, which the healthcheck waits for. Nothing else depends on it, so
-    # `run e2e` wouldn't start it.
-    depends_on:
-      authentik-postgresql:
-        condition: service_healthy
-      authentik-worker:
-        condition: service_started
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          ak healthcheck && python3 -c "import urllib.request as r;
-          r.urlopen('http://localhost:9000/application/o/timetrack/.well-known/openid-configuration')"
-      interval: 5s
-      timeout: 10s
-      retries: 60
-      start_period: 30s
-
-  authentik-worker:
-    build:
-      context: ./backend/docker/authentik
-      dockerfile: Dockerfile.e2e
-    image: timetrack-e2e-authentik
-    volumes: !reset []
 
   e2e:
     build:
@@ -89,7 +57,7 @@ services:
       CI: ${CI:-}
       BASE_URL: http://frontend:3000
       API_URL: http://backend
-      AUTHENTIK_URL: http://authentik-server:9000
+      DEX_URL: http://dex:5556
     depends_on:
       backend:
         condition: service_healthy
