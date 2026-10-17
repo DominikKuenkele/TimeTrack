@@ -52,25 +52,25 @@ func main() {
 		cfg.OAuthClientID,
 	)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("%v", err)
 		return
 	}
 
 	projectAPI, err := projects.BuildProject(logger, database)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("%v", err)
 		return
 	}
 	server.AddHandler(projects.Prefix+"/", authenticatorAPI.Authenticate(projectAPI.HTTPHandler))
 
 	activityAPI, err := activities.BuildActivity(logger, database)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error("%v", err)
 		return
 	}
 	server.AddHandler(activities.Prefix+"/", authenticatorAPI.Authenticate(activityAPI.HTTPHandler))
 
 	if err := server.Start(); err != nil {
-		logger.Error(err.Error())
+		logger.Error("%v", err)
 	}
 }

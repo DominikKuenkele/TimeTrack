@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { redirect } from 'react-router-dom';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../useAuth';
 
 export const Login = () => {
     const { isLoggedIn, login } = useAuth();
@@ -12,7 +12,7 @@ export const Login = () => {
         }
         // Kick off the OIDC redirect flow
         login();
-    }, [isLoggedIn]);
+    }, [isLoggedIn, login]);
 
     return (
         <div className="flex items-center justify-center min-h-screen">

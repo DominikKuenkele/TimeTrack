@@ -1,20 +1,12 @@
-import React, { createContext, ReactNode, useContext } from 'react';
+import React, { ReactNode, useCallback } from 'react';
 import { useAuth as useOidcAuth } from 'react-oidc-context';
-
-interface AuthContextType {
-    isLoggedIn: boolean;
-    isLoading: boolean;
-    login: () => void;
-    logout: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from './useAuth';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const auth = useOidcAuth();
 
-    const login = () => auth.signinRedirect();
-    const logout = async () => { await auth.signoutRedirect(); };
+    const login = useCallback(() => auth.signinRedirect(), [auth]);
+    const logout = useCallback(async () => { await auth.signoutRedirect(); }, [auth]);
 
     return (
         <AuthContext.Provider value={{
@@ -26,12 +18,4 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             {children}
         </AuthContext.Provider>
     );
-};
-
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
-    return context;
 };

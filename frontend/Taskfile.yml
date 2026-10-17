@@ -1,0 +1,27 @@
+version: "3"
+
+tasks:
+  deps:
+    desc: Install dependencies from the lockfile
+    sources: [package-lock.json]
+    generates: [node_modules/.package-lock.json]
+    cmds:
+      - npm ci
+
+  lint:
+    desc: ESLint
+    deps: [deps]
+    cmds:
+      - npm run lint
+
+  build:
+    desc: Type-check and build the frontend
+    deps: [deps]
+    cmds:
+      - npm run build
+
+  check:
+    desc: Lint and build the frontend
+    cmds:
+      - task: lint
+      - task: build

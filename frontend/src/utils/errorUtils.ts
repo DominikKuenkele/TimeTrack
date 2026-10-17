@@ -9,8 +9,10 @@ interface ApiErrorResponse {
 /**
  * Type guard to check if an object is an ApiErrorResponse
  */
-export const isApiErrorResponse = (obj: any): obj is ApiErrorResponse => {
-    return obj && typeof obj.message === 'string' && typeof obj.error === 'string';
+export const isApiErrorResponse = (obj: unknown): obj is ApiErrorResponse => {
+    return typeof obj === 'object' && obj !== null
+        && 'message' in obj && typeof obj.message === 'string'
+        && 'error' in obj && typeof obj.error === 'string';
 }
 
 /**

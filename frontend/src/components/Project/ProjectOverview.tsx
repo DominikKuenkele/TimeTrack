@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { projectService } from '../../services/api';
 import { Project } from '../../types';
 import { extractErrorMessage } from '../../utils/errorUtils';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../useAuth';
 import SearchForm from '../SearchForm';
 import CreateProjectForm from './CreateProjectForm';
 import ProjectList from './ProjectList';
@@ -23,7 +23,7 @@ const ProjectOverview: React.FC = () => {
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [perPage, setPerPage] = useState<number>(20);
 
-    const [updateProjects, setUpdateProjects] = useState<boolean>(true);
+    const [reload, setReload] = useState<number>(0);
 
     const { isLoggedIn } = useAuth();
     const navigate = useNavigate();
@@ -35,39 +35,39 @@ const ProjectOverview: React.FC = () => {
     }, [isLoggedIn, navigate])
 
     useEffect(() => {
-        fetchProjects();
-    }, [currentPage, perPage, searchTerm, updateProjects])
-
-    const fetchProjects = async (): Promise<void> => {
         if (!isLoggedIn) {
-            return
+            return;
         }
+        let cancelled = false;
+        projectService.getProjectsLike(currentPage, perPage, searchTerm)
+            .then((data) => {
+                if (cancelled) return;
+                if (currentPage > data.totalPages) {
+                    setCurrentPage(data.totalPages)
+                }
+                setProjects(data.projects);
+                setActiveProject(data.activeProject);
+                setTotalPages(data.totalPages);
+                setTotalProjects(data.total);
+                setError(null);
+            })
+            .catch((err: unknown) => {
+                if (cancelled) return;
+                const errorMessage = extractErrorMessage(
+                    err,
+                    'Failed to fetch projects. Please try again later.'
+                );
+                setError(`Error: ${errorMessage}`);
+                console.error(err);
+            });
+        return () => { cancelled = true; };
+    }, [isLoggedIn, currentPage, perPage, searchTerm, reload])
 
-        try {
-            const data = await projectService.getProjectsLike(currentPage, perPage, searchTerm);
-            if (currentPage > data.totalPages) {
-                setCurrentPage(data.totalPages)
-            }
-            setProjects(data.projects);
-            setActiveProject(data.activeProject);
-            setTotalPages(data.totalPages);
-            setTotalProjects(data.total);
-            setError(null);
-        } catch (err: unknown) {
-            const errorMessage = extractErrorMessage(
-                err,
-                'Failed to fetch projects. Please try again later.'
-            );
-            setError(`Error: ${errorMessage}`);
-            console.error(err);
-        } finally {
-            setUpdateProjects(false);
-        }
-    };
+    const fetchProjects = useCallback(() => setReload((n) => n + 1), []);
 
     const handleProjectCreation = () => {
         setCurrentPage(1);
-        setUpdateProjects(true);
+        fetchProjects();
     }
 
     const udpateSearchTerm = (searchTerm: string) => {

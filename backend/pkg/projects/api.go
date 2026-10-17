@@ -79,7 +79,7 @@ func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *apiImpl) sendInvalidInputResponse(w http.ResponseWriter, err error) {
-	a.logger.Error(err.Error())
+	a.logger.Error("%v", err)
 
 	w.WriteHeader(http.StatusBadRequest)
 

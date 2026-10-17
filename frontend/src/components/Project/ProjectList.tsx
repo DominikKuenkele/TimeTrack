@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Project } from '../../types';
 import Pagination from '../Pagination';
 import ProjectItem from './ProjectItem';
@@ -66,8 +66,10 @@ const ProjectList: React.FC<ProjectListProps> = ({
         fetchProjects(currentPage, perPage);
     }
 
+    const onPageChange = useEffectEvent(updateProjects);
+
     useEffect(() => {
-        updateProjects()
+        onPageChange()
     }, [currentPage, perPage]);
 
     useEffect(() => {

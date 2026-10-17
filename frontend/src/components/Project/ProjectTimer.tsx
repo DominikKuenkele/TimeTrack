@@ -7,19 +7,14 @@ interface ProjectTimerProps {
 }
 
 const ProjectTimer: React.FC<ProjectTimerProps> = ({ startedAt }) => {
-    const [elapsedTime, setElapsedTime] = useState<number>(0);
+    const [now, setNow] = useState(() => Date.now());
 
     useEffect(() => {
-        const startTime = startedAt.getTime();
-        const initialElapsed = Math.floor((Date.now() - startTime) / 1000);
-        setElapsedTime(initialElapsed);
-
-        const timer = setInterval(() => {
-            setElapsedTime(prev => prev + 1);
-        }, 1000);
-
+        const timer = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(timer);
-    }, [startedAt]);
+    }, []);
+
+    const elapsedTime = Math.max(0, Math.floor((now - startedAt.getTime()) / 1000));
 
     return (
         <div className="project-timer">

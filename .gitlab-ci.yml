@@ -1,34 +1,56 @@
-stages:
-  - build
+stages: [prepare, check, build]
 
-build_frontend:
-  stage: build
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [ "" ]
-  script:
-    - echo "VITE_API_URL=${VITE_API_URL}" > ${CI_PROJECT_DIR}/frontend/.env
-    - echo "VITE_NODE_ENV=${VITE_NODE_ENV}" >> ${CI_PROJECT_DIR}/frontend/.env
-    - echo "VITE_OIDC_AUTHORITY=${VITE_OIDC_AUTHORITY}" >>
-      ${CI_PROJECT_DIR}/frontend/.env
-    - echo "VITE_OIDC_CLIENT_ID=${VITE_OIDC_CLIENT_ID}" >>
-      ${CI_PROJECT_DIR}/frontend/.env
-    - /kaniko/executor --context "${CI_PROJECT_DIR}/frontend" --dockerfile
-      "${CI_PROJECT_DIR}/frontend/Dockerfile" --destination
-      "${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_TAG}" --destination
-      "${CI_REGISTRY_IMAGE}/frontend:latest" --build-arg STAGE=prod
+variables:
+  GO_VERSION: "1.26"
+  NODE_VERSION: "24"
+  CHECK_IMAGE: $CI_REGISTRY_IMAGE/ci/check:go-$GO_VERSION-node-$NODE_VERSION
+
+.on_mr_or_tag:
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_TAG
+
+# The runner mounts the socket of its own rootless daemon, which only runs CI.
+.docker:
+  image: docker:29.8.1-cli
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+
+build_check_image:
+  extends: [.on_mr_or_tag, .docker]
+  stage: prepare
+  script:
+    - docker build -t "$CHECK_IMAGE" --build-arg GO_VERSION="$GO_VERSION" --build-arg NODE_VERSION="$NODE_VERSION" ci/check
+    - docker push "$CHECK_IMAGE"
+
+check:
+  extends: .on_mr_or_tag
+  stage: check
+  image: $CHECK_IMAGE
+  script:
+    - task check
 
 build_backend:
+  extends: .docker
   stage: build
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [ "" ]
-  script:
-    - /kaniko/executor --context "${CI_PROJECT_DIR}/backend" --dockerfile
-      "${CI_PROJECT_DIR}/backend/Dockerfile" --destination
-      "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_TAG}" --destination
-      "${CI_REGISTRY_IMAGE}/backend:latest" --build-arg STAGE=prod
   rules:
     - if: $CI_COMMIT_TAG
+  script:
+    - docker build --target prod -t "$CI_REGISTRY_IMAGE/backend:$CI_COMMIT_TAG" -t "$CI_REGISTRY_IMAGE/backend:latest" backend
+    - docker push --all-tags "$CI_REGISTRY_IMAGE/backend"
+
+build_frontend:
+  extends: .docker
+  stage: build
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - |
+      cat > frontend/.env <<EOF
+      VITE_API_URL=${VITE_API_URL}
+      VITE_NODE_ENV=${VITE_NODE_ENV}
+      VITE_OIDC_AUTHORITY=${VITE_OIDC_AUTHORITY}
+      VITE_OIDC_CLIENT_ID=${VITE_OIDC_CLIENT_ID}
+      EOF
+    - docker build --target prod -t "$CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_TAG" -t "$CI_REGISTRY_IMAGE/frontend:latest" frontend
+    - docker push --all-tags "$CI_REGISTRY_IMAGE/frontend"

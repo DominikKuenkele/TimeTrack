@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { activityService } from '../../services/api';
 import { DailyActivities } from '../../types';
 import { extractErrorMessage } from '../../utils/errorUtils';
 import { dateToDayString, formatRuntime } from '../../utils/timeUtils';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../useAuth';
 import ActivityList from './ActivityList';
 import './ActivityOverview.css';
 
@@ -23,7 +23,7 @@ const ActivityOverview: React.FC = () => {
     const { isLoggedIn, isLoading } = useAuth();
     const navigate = useNavigate();
 
-    const [updateProjects, setUpdateActivities] = useState<boolean>(true);
+    const [reload, setReload] = useState<number>(0);
 
     useEffect(() => {
         if (!isLoading && !isLoggedIn) {
@@ -32,30 +32,31 @@ const ActivityOverview: React.FC = () => {
     }, [isLoggedIn, isLoading, navigate])
 
     useEffect(() => {
-        fetchActivities();
-    }, [day, updateProjects])
-
-    const fetchActivities = async (): Promise<void> => {
         if (!isLoggedIn) {
-            return
+            return;
         }
+        let cancelled = false;
+        activityService.getDailyActivities(day)
+            .then((data) => {
+                if (cancelled) return;
+                setDailyActivities(data);
+                setError(null);
+            })
+            .catch((err: unknown) => {
+                if (cancelled) return;
+                const errorMessage = extractErrorMessage(
+                    err,
+                    'Failed to fetch projects. Please try again later.'
+                );
+                setError(`Error: ${errorMessage}`);
+                console.error(err);
+            });
+        return () => { cancelled = true; };
+    }, [isLoggedIn, day, reload])
 
-        try {
-            const data = await activityService.getDailyActivities(day);
-
-            setDailyActivities(data);
-            setError(null);
-        } catch (err: unknown) {
-            const errorMessage = extractErrorMessage(
-                err,
-                'Failed to fetch projects. Please try again later.'
-            );
-            setError(`Error: ${errorMessage}`);
-            console.error(err);
-        } finally {
-            setUpdateActivities(false);
-        }
-    };
+    const setUpdateActivities = useCallback((update: boolean) => {
+        if (update) setReload((n) => n + 1);
+    }, []);
 
     return (
         <div className="activity-overview">

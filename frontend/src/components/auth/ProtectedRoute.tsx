@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from 'react';
-import { useAuth } from '../AuthContext';
+import { useAuth } from '../useAuth';
 
 interface ProtectedRouteProps {
     children: ReactNode;
@@ -12,7 +12,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
         if (!isLoading && !isLoggedIn) {
             login();
         }
-    }, [isLoading, isLoggedIn]);
+    }, [isLoading, isLoggedIn, login]);
 
     if (isLoading) {
         return (

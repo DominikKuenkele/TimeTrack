@@ -1,0 +1,4 @@
+# Must follow GO_VERSION and NODE_VERSION in .gitlab-ci.yml (CHECK_IMAGE)
+image = "registry.dominik-kuenkele.de/dominik/timetrack/ci/check:go-1.26-node-24"
+writable = ["/go"]
+auto_merge = "shadow"

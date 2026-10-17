@@ -9,21 +9,21 @@ interface RequestOptions extends RequestInit {
     requiresAuth?: boolean;
 }
 
-const logErrorIfNeeded = (error: any) => {
+const logErrorIfNeeded = (error: unknown) => {
     if (NODE_ENV !== 'production') {
-        console.log('API Error Response:', error.response?.data);
+        console.log('API Error Response:', (error as { response?: { data?: unknown } })?.response?.data);
     }
     throw error;
 };
 
-const mapProject = (project: any): Project => {
+const mapProject = (project: Project): Project => {
     return {
         ...project,
         startedAt: project.startedAt ? new Date(project.startedAt) : null,
     };
 };
 
-const mapActivity = (activity: any): Activity => {
+const mapActivity = (activity: Activity): Activity => {
     return {
         ...activity,
         startedAt: new Date(activity.startedAt),
@@ -94,11 +94,7 @@ export const projectService = {
         try {
             const response = await api.get<PaginatedProjects>(`/projects/?page=${page}&per_page=${perPage}&search_term=${searchTerm}`);
 
-            if (response.activeProject === undefined) {
-                response.activeProject = null;
-            } else {
-                response.activeProject = mapProject(response.activeProject);
-            }
+            response.activeProject = response.activeProject ? mapProject(response.activeProject) : null;
 
             return {
                 ...response,

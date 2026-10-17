@@ -1,0 +1,21 @@
+version: "3"
+
+includes:
+  be:
+    taskfile: ./backend/Taskfile.yml
+    dir: ./backend/pkg
+  fe:
+    taskfile: ./frontend/Taskfile.yml
+    dir: ./frontend
+
+tasks:
+  check:
+    desc: Lint, build and test backend and frontend (what CI runs on merge requests)
+    cmds:
+      - task: be:check
+      - task: fe:check
+
+  up:
+    desc: Run the dev stack (backend, frontend, Postgres, Authentik)
+    cmds:
+      - docker compose up --build

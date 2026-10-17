@@ -1,0 +1,24 @@
+version: "3"
+
+tasks:
+  lint:
+    desc: go vet
+    cmds:
+      - go vet ./...
+
+  build:
+    desc: Build the backend
+    cmds:
+      - go build ./...
+
+  test:
+    desc: Run the backend tests
+    cmds:
+      - go test ./...
+
+  check:
+    desc: Lint, build and test the backend
+    cmds:
+      - task: lint
+      - task: build
+      - task: test
