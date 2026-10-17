@@ -1,0 +1,90 @@
+# End-to-end test stack: `docker compose -f compose.yaml -f compose.e2e.yaml` (`task test:e2e`)
+#
+# Builds on the dev stack (same services, same database schema, same Authentik blueprint), with these changes:
+# - No bind mounts, no published ports and no debugger: the CI runner talks to a remote rootless docker
+#   daemon, on which paths of the checkout don't exist. What the dev setup mounts is built into images instead.
+# - The browser (the `e2e` service, inside the network) and the backend reach Authentik, the frontend and the
+#   backend by their service names. The issuer of the tokens follows the host of the request, so the backend needs
+#   no separate discovery URL.
+# - Backend and browser run in UTC like the database.
+# - Authentik gets the test users (blueprints-e2e) and only counts as healthy once the app's provider exists.
+services:
+  db:
+    build:
+      context: ./backend/database
+      dockerfile: Dockerfile.e2e
+    image: timetrack-e2e-db
+    ports: !reset []
+    volumes: !reset []
+
+  backend:
+    build:
+      context: ./backend
+      target: prod
+    ports: !reset []
+    volumes: !reset []
+    environment:
+      TZ: UTC
+      FRONTEND_ADDRESS: http://frontend:3000
+      OAUTH_SERVER_URL: http://authentik-server:9000/application/o/timetrack/
+      OAUTH_DISCOVERY_URL: http://authentik-server:9000/application/o/timetrack/
+    healthcheck:
+      test: [ "CMD-SHELL", "nc -z localhost 80" ]
+      interval: 2s
+      retries: 30
+
+  frontend:
+    ports: !reset []
+    volumes: !reset []
+    environment:
+      VITE_API_URL: http://backend
+      VITE_NODE_ENV: development
+      VITE_OIDC_AUTHORITY: http://authentik-server:9000/application/o/timetrack/
+      VITE_OIDC_CLIENT_ID: timetrack-local-dev
+    healthcheck:
+      # Also compiles the app once, so that Vite doesn't reload the page while the first test runs
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:3000/ && wget -qO /dev/null http://localhost:3000/src/index.tsx" ]
+      interval: 2s
+      retries: 60
+
+  authentik-postgresql:
+    volumes: !reset []
+
+  authentik-server:
+    build:
+      context: ./backend/docker/authentik
+      dockerfile: Dockerfile.e2e
+    image: timetrack-e2e-authentik
+    ports: !reset []
+    volumes: !reset []
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          ak healthcheck && python3 -c "import urllib.request as r;
+          r.urlopen('http://localhost:9000/application/o/timetrack/.well-known/openid-configuration')"
+      interval: 5s
+      timeout: 10s
+      retries: 60
+      start_period: 30s
+
+  authentik-worker:
+    build:
+      context: ./backend/docker/authentik
+      dockerfile: Dockerfile.e2e
+    image: timetrack-e2e-authentik
+    volumes: !reset []
+
+  e2e:
+    build:
+      context: ./e2e
+    environment:
+      CI: ${CI:-}
+      BASE_URL: http://frontend:3000
+      API_URL: http://backend
+      AUTHENTIK_URL: http://authentik-server:9000
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy

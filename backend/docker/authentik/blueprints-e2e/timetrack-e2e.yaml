@@ -1,0 +1,70 @@
+version: 1
+metadata:
+  name: TimeTrack E2E Users
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+    blueprints.goauthentik.io/description: |
+      Test users of the end-to-end tests (e2e/), only part of the e2e stack (compose.e2e.yaml).
+      The provider and application come from the dev blueprint timetrack.yaml.
+      Keep the usernames and the password in sync with e2e/support/users.ts.
+
+entries:
+  - model: authentik_core.user
+    state: present
+    identifiers:
+      username: e2e-alice
+    attrs:
+      name: E2E alice
+      email: e2e-alice@timetrack.local
+      password: e2e-password
+      is_active: true
+
+  - model: authentik_core.user
+    state: present
+    identifiers:
+      username: e2e-bob
+    attrs:
+      name: E2E bob
+      email: e2e-bob@timetrack.local
+      password: e2e-password
+      is_active: true
+
+  - model: authentik_core.user
+    state: present
+    identifiers:
+      username: e2e-fresh-1
+    attrs:
+      name: E2E fresh-1
+      email: e2e-fresh-1@timetrack.local
+      password: e2e-password
+      is_active: true
+
+  - model: authentik_core.user
+    state: present
+    identifiers:
+      username: e2e-fresh-2
+    attrs:
+      name: E2E fresh-2
+      email: e2e-fresh-2@timetrack.local
+      password: e2e-password
+      is_active: true
+
+  - model: authentik_core.user
+    state: present
+    identifiers:
+      username: e2e-fresh-3
+    attrs:
+      name: E2E fresh-3
+      email: e2e-fresh-3@timetrack.local
+      password: e2e-password
+      is_active: true
+
+  - model: authentik_core.user
+    state: present
+    identifiers:
+      username: e2e-fresh-4
+    attrs:
+      name: E2E fresh-4
+      email: e2e-fresh-4@timetrack.local
+      password: e2e-password
+      is_active: true

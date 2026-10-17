@@ -5,6 +5,8 @@ export default defineConfig({
     plugins: [react()],
     server: {
         port: 3000,
+        // The e2e stack (compose.e2e.yaml) reaches the dev server by its service name
+        allowedHosts: ['frontend'],
         open: true,
     },
     test: {

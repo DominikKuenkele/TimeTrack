@@ -1,0 +1,4 @@
+# The database of the e2e stack (compose.e2e.yaml): the dev setup mounts the schema, a remote docker daemon can't
+FROM postgres:latest
+
+COPY init_database.sql /docker-entrypoint-initdb.d/

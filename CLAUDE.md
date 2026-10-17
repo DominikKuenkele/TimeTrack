@@ -10,6 +10,9 @@ goes through Authentik (OIDC); `compose.yaml` runs the whole dev stack including
 - `task be:lint` / `be:build` / `be:test`: `go vet`, `go build`, `go test` in `backend/pkg/`.
 - `task fe:lint` / `fe:build`: ESLint (no warnings allowed), `tsc` and the Vite build.
 - `task up`: the dev stack (`docker compose`).
+- `task test:e2e`: Playwright tests in `e2e/` against the whole stack (`compose.yaml` plus
+  `compose.e2e.yaml`: no mounts, service-name URLs, Authentik test users from `blueprints-e2e/`). Needs
+  docker; CI runs it as the `e2e` job. Not part of `task check`.
 
 ## Releasing
 
@@ -19,6 +22,8 @@ MRs (`ci/release-notes.sh`). No tags by hand; to roll back, revert on `main`.
 
 ## Tests
 
+- End-to-end tests (`e2e/`) cover every user feature including the SQL, the one-active-project rule and
+  user isolation. They create their own uniquely named data (no database reset), so new tests must too.
 - Unit tests (`task be:test`, frontend tests) cover logic that can break, without database or
   other services; no tests for coverage, mappings or what only restates the code.
 - Logic worth testing that is tangled with SQL, HTTP or components gets pulled out into plain
@@ -32,4 +37,5 @@ When you run as the GitLab agent (implementing an issue in CI, not in a session 
 - The design discussion already happened: the issue was judged clear enough, or its plan was
   approved. Implement it; don't stop to ask.
 - You run in the CI check image (Go, Node, `task`), without Postgres or Authentik. Run the checks
-  above for what you change; never `task up`.
+  above for what you change; never `task up` or `task test:e2e` (no docker; the MR pipeline's `e2e` job
+  runs them). Type-check e2e changes with `npm run lint` in `e2e/`.

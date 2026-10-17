@@ -6,7 +6,7 @@ metadata:
     blueprints.goauthentik.io/description: |
       Pre-configures the TimeTrack OAuth2/OIDC provider and application for local development.
       Client ID: timetrack-local-dev
-      Redirect URI: http://localhost:3000/auth/callback
+      Redirect URIs: http://localhost:3000/auth/callback (dev), http://frontend:3000/auth/callback (e2e stack)
 
 entries:
   - model: authentik_providers_oauth2.oauth2provider
@@ -28,6 +28,9 @@ entries:
       redirect_uris:
         - matching_mode: strict
           url: http://localhost:3000/auth/callback
+        # The e2e stack (compose.e2e.yaml) serves the frontend under its service name
+        - matching_mode: strict
+          url: http://frontend:3000/auth/callback
       property_mappings:
         - !Find [
             authentik_providers_oauth2.scopemapping,

@@ -38,6 +38,29 @@ check:
   script:
     - task check
 
+# The whole stack with Playwright, see compose.e2e.yaml. Not part of `task check`, as it needs docker.
+# Keep the commands in sync with `task test:e2e`.
+e2e:
+  extends: [.on_mr_or_main, .docker]
+  stage: check
+  variables:
+    E2E_COMPOSE: docker compose -p timetrack-e2e -f compose.yaml -f compose.e2e.yaml
+  script:
+    - $E2E_COMPOSE run -T --build --name timetrack-e2e-run e2e
+  after_script:
+    - docker cp timetrack-e2e-run:/e2e/playwright-report e2e/playwright-report || true
+    - docker cp timetrack-e2e-run:/e2e/test-results e2e/test-results || true
+    - docker cp timetrack-e2e-run:/e2e/junit e2e/junit || true
+    - docker compose -p timetrack-e2e -f compose.yaml -f compose.e2e.yaml down -v --remove-orphans || true
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - e2e/playwright-report
+      - e2e/test-results
+    reports:
+      junit: e2e/junit/junit.xml
+
 build_backend:
   extends: [.on_main, .docker]
   stage: build
