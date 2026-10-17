@@ -29,7 +29,7 @@ services:
       OAUTH_SERVER_URL: http://authentik-server:9000/application/o/timetrack/
       OAUTH_DISCOVERY_URL: http://authentik-server:9000/application/o/timetrack/
     healthcheck:
-      test: [ "CMD-SHELL", "nc -z localhost 80" ]
+      test: [ "CMD-SHELL", "nc -z 127.0.0.1 80" ]
       interval: 2s
       retries: 30
 
@@ -43,7 +43,7 @@ services:
       VITE_OIDC_CLIENT_ID: timetrack-local-dev
     healthcheck:
       # Also compiles the app once, so that Vite doesn't reload the page while the first test runs
-      test: [ "CMD-SHELL", "wget -qO /dev/null http://localhost:3000/ && wget -qO /dev/null http://localhost:3000/src/index.tsx" ]
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:3000/ && wget -qO /dev/null http://127.0.0.1:3000/src/index.tsx" ]
       interval: 2s
       retries: 60
 
