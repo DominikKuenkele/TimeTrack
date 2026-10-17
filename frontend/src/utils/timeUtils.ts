@@ -35,8 +35,40 @@ export const formatRuntime = (totalSeconds: number): string => {
     }
 };
 
+/**
+ * Format the local calendar day of a date as YYYY-MM-DD
+ */
 export const dateToDayString = (date: Date | null) => {
-    return date ? date.toISOString().split('T')[0] : ''
+    if (!date) {
+        return ''
+    }
+
+    const year = String(date.getFullYear()).padStart(4, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`
+}
+
+/**
+ * Move a date by whole calendar days, keeping the local time of day (also across DST changes)
+ */
+export const shiftDay = (day: Date, delta: number): Date => {
+    const shifted = new Date(day);
+    shifted.setDate(shifted.getDate() + delta);
+    return shifted;
+}
+
+/**
+ * Parse the value of a date input (YYYY-MM-DD) as local midnight, null if it is not a date
+ */
+export const parseDayInput = (value: string): Date | null => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) {
+        return null;
+    }
+
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 }
 
 
@@ -50,8 +82,8 @@ export const toLocalISOString = (date: Date | null): string => {
     }
 
     const offset = date.getTimezoneOffset();
-    const offsetHours = Math.abs(Math.floor(offset / 60));
-    const offsetMinutes = Math.abs(offset % 60);
+    const offsetHours = Math.floor(Math.abs(offset) / 60);
+    const offsetMinutes = Math.abs(offset) % 60;
     const offsetSign = offset > 0 ? '-' : '+';
 
     const offsetString = `${offsetSign}${String(offsetHours).padStart(2, '0')}:${String(offsetMinutes).padStart(2, '0')}`;

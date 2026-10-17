@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { activityService } from '../../services/api';
 import { DailyActivities } from '../../types';
 import { extractErrorMessage } from '../../utils/errorUtils';
-import { dateToDayString, formatRuntime } from '../../utils/timeUtils';
+import { dateToDayString, formatRuntime, parseDayInput, shiftDay } from '../../utils/timeUtils';
 import { useAuth } from '../useAuth';
 import ActivityList from './ActivityList';
 import './ActivityOverview.css';
@@ -64,14 +64,17 @@ const ActivityOverview: React.FC = () => {
 
             <div className="activity-overview-header">
                 <div className='activity-date-picker'>
-                    <button onClick={() => setDay(new Date(day.getTime() - 86400000))}>◀</button>
+                    <button onClick={() => setDay(shiftDay(day, -1))}>◀</button>
                     <input
                         type="date"
                         value={dateToDayString(day)}
-                        onChange={(e) => setDay(new Date(e.target.value))}
+                        onChange={(e) => {
+                            const parsed = parseDayInput(e.target.value);
+                            if (parsed) setDay(parsed);
+                        }}
                         placeholder="Select start date"
                     />
-                    <button onClick={() => setDay(new Date(day.getTime() + 86400000))}>▶</button>
+                    <button onClick={() => setDay(shiftDay(day, 1))}>▶</button>
                 </div>
             </div>
 
