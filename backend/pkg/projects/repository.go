@@ -250,6 +250,11 @@ func (r *repositoryImpl) GetRunningProject(userID string) (*Project, error) {
 }
 
 func (r *repositoryImpl) DeleteProject(userID, name string) error {
+	days, err := r.activityDays(userID, name)
+	if err != nil {
+		return err
+	}
+
 	res, err := r.database.Exec(
 		"DELETE"+
 			" FROM "+tableProjects+
@@ -267,7 +272,40 @@ func (r *repositoryImpl) DeleteProject(userID, name string) error {
 		}
 	}
 
+	for _, day := range days {
+		if err := r.updateWorktime(userID, day); err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func (r *repositoryImpl) activityDays(userID, name string) ([]time.Time, error) {
+	rows, err := r.database.Query(
+		"SELECT DISTINCT a."+columnsActivitiesStartedAt+"::date"+
+			" FROM "+tableActvities+" a"+
+			" JOIN "+tableProjects+" p ON a."+columnsActivitiesProjectID+"=p."+columnProjectsProjectID+
+			" WHERE p."+columnProjectsUserID+"=$1 AND p."+columnProjectsName+"=$2;",
+		userID, name)
+	if err != nil {
+		return nil, r.logger.LogAndAbstractError("database error", "Error getting activity days: %+v", err)
+	}
+	defer rows.Close()
+
+	var days []time.Time
+	for rows.Next() {
+		var day time.Time
+		if err := rows.Scan(&day); err != nil {
+			return nil, r.logger.LogAndAbstractError("database error", "Error scanning activity day: %+v", err)
+		}
+		days = append(days, day)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, r.logger.LogAndAbstractError("database error", "Error iterating activity days: %+v", err)
+	}
+
+	return days, nil
 }
 
 func (r *repositoryImpl) StartProject(userID, name string) error {
@@ -443,31 +481,55 @@ func (r *repositoryImpl) ChangeActivity(userID string, activity Activity) error 
 		return err
 	}
 
-	res, err := r.database.Exec(
-		"UPDATE "+tableActvities+
+	var previousStartedAt time.Time
+	err = r.database.QueryRow(
+		"UPDATE "+tableActvities+" a"+
 			" SET "+columnsActivitiesProjectID+"=$1, "+columnsActivitiesStartedAt+"=$2, "+columnsActivitiesEndedAt+"=$3"+
-			" WHERE "+columnsActivitiesActivityID+"=$4;",
-		project.ID, activity.StartedAt, activity.EndedAt, activity.ID)
+			" FROM "+tableActvities+" previous"+
+			" JOIN "+tableProjects+" p ON previous."+columnsActivitiesProjectID+"=p."+columnProjectsProjectID+
+			" WHERE a."+columnsActivitiesActivityID+"=$4 AND previous."+columnsActivitiesActivityID+"=$4 AND p."+columnProjectsUserID+"=$5"+
+			" RETURNING previous."+columnsActivitiesStartedAt+";",
+		[]any{project.ID, activity.StartedAt, activity.EndedAt, activity.ID, userID},
+		&previousStartedAt,
+	)
 	if err != nil {
-		return r.logger.LogAndAbstractError("database error", "Couldn't change activity: %+v", err)
+		switch {
+		case errors.As(err, &database.NoRowsError{}):
+			return fmt.Errorf("activity '%d' not found", activity.ID)
+		default:
+			return r.logger.LogAndAbstractError("database error", "Couldn't change activity: %+v", err)
+		}
 	}
 
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return r.logger.LogAndAbstractError("database error", "Couldn't change activity: %+v", err)
+	if err := r.updateWorktime(userID, activity.StartedAt); err != nil {
+		return err
+	}
+	if !sameDay(previousStartedAt, activity.StartedAt) {
+		return r.updateWorktime(userID, previousStartedAt)
 	}
 
-	if rowsAffected == 0 {
-		return r.logger.LogAndAbstractError("database error", "activity '%d' not found", activity.ID)
-	}
+	return nil
+}
 
-	return r.updateWorktime(userID, activity.StartedAt)
+func sameDay(a, b time.Time) bool {
+	return a.UTC().Format(time.DateOnly) == b.UTC().Format(time.DateOnly)
 }
 
 func (r *repositoryImpl) updateWorktime(userID string, day time.Time) error {
 	activities, err := r.GetActivities(userID, day)
 	if err != nil {
 		return err
+	}
+
+	if len(activities) == 0 {
+		_, err = r.database.Exec(
+			"DELETE FROM "+tableWorktime+
+				" WHERE "+columnWorktimeUserID+"=$1 AND "+columnWorktimeDay+"=$2::date;",
+			userID, day)
+		if err != nil {
+			return r.logger.LogAndAbstractError("database error", "Couldn't update worktime: %+v", err)
+		}
+		return nil
 	}
 
 	dailyActivities := DailyActivities{

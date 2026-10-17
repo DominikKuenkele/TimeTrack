@@ -1,6 +1,6 @@
 # Dev environment — prerequisites: docker
-# After first start, wait ~60 s for Authentik to bootstrap, then log in at
-# http://localhost:9000 with akadmin / akadmin
+# Log in to the app (http://localhost:3000) as dev@timetrack.local / dev (or dev2@timetrack.local / dev), see
+# backend/docker/dex/config.yaml
 services:
   backend:
     build:
@@ -17,13 +17,14 @@ services:
       LOG_LEVEL: debug
       LOG_FILE: timetrack.log
       FRONTEND_ADDRESS: http://localhost:3000
-      OAUTH_SERVER_URL: http://localhost:9000/application/o/timetrack/
-      OAUTH_DISCOVERY_URL: http://authentik-server:9000/application/o/timetrack/
+      # The browser reaches Dex on localhost, the backend by its service name
+      OAUTH_SERVER_URL: http://localhost:5556/dex
+      OAUTH_DISCOVERY_URL: http://dex:5556/dex
       OAUTH_CLIENT_ID: timetrack-local-dev
     depends_on:
       db:
         condition: service_healthy
-      authentik-server:
+      dex:
         condition: service_healthy
     volumes:
       - /etc/timezone:/etc/timezone:ro
@@ -58,79 +59,18 @@ services:
       interval: 2s
       retries: 5
 
-  authentik-postgresql:
-    image: docker.io/library/postgres:16-alpine
-    environment:
-      POSTGRES_DB: authentik
-      POSTGRES_PASSWORD: authentik
-      POSTGRES_USER: authentik
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}" ]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    restart: unless-stopped
-    volumes:
-      - authentik_db:/var/lib/postgresql/data
-
-  authentik-server:
-    image: ghcr.io/goauthentik/server:2026.2.2
-    command: server
-    environment:
-      AUTHENTIK_POSTGRESQL__HOST: authentik-postgresql
-      AUTHENTIK_POSTGRESQL__NAME: authentik
-      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
-      AUTHENTIK_POSTGRESQL__USER: authentik
-      AUTHENTIK_SECRET_KEY: dev-secret-key-do-not-use-in-production
-      AUTHENTIK_BOOTSTRAP_PASSWORD: akadmin
-      AUTHENTIK_BOOTSTRAP_EMAIL: admin@timetrack.local
+  dex:
+    build:
+      context: ./backend/docker/dex
+    command: [ "dex", "serve", "/etc/dex/config.yaml" ]
     ports:
-      - "9000:9000"
-      - "9443:9443"
-    depends_on:
-      authentik-postgresql:
-        condition: service_healthy
-    restart: unless-stopped
-    shm_size: 512mb
+      - "5556:5556"
     healthcheck:
-      test: [ "CMD-SHELL", "ak healthcheck || exit 1" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    volumes:
-      - ./backend/docker/authentik/data:/data
-      - ./backend/docker/authentik/custom-templates:/templates
-      - ./backend/docker/authentik/blueprints:/blueprints/custom
-
-  authentik-worker:
-    image: ghcr.io/goauthentik/server:2026.2.2
-    command: worker
-    environment:
-      AUTHENTIK_POSTGRESQL__HOST: authentik-postgresql
-      AUTHENTIK_POSTGRESQL__NAME: authentik
-      AUTHENTIK_POSTGRESQL__PASSWORD: authentik
-      AUTHENTIK_POSTGRESQL__USER: authentik
-      AUTHENTIK_SECRET_KEY: dev-secret-key-do-not-use-in-production
-      AUTHENTIK_BOOTSTRAP_PASSWORD: akadmin
-      AUTHENTIK_BOOTSTRAP_EMAIL: admin@timetrack.local
-    restart: unless-stopped
-    shm_size: 512mb
-    user: root
-    depends_on:
-      authentik-postgresql:
-        condition: service_healthy
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./backend/docker/authentik/data:/data
-      - ./backend/docker/authentik/certs:/certs
-      - ./backend/docker/authentik/custom-templates:/templates
-      - ./backend/docker/authentik/blueprints:/blueprints/custom
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:5558/healthz" ]
+      interval: 1s
+      retries: 30
 
 volumes:
   postgres_data:
-  authentik_db:
-    driver: local
   frontend_node_modules:
     driver: local

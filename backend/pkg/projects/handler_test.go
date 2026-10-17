@@ -93,6 +93,20 @@ func TestHandlerRejectsEmptyName(t *testing.T) {
 	}
 }
 
+func TestHandlerRejectsSlashInName(t *testing.T) {
+	repo := &fakeRepository{}
+	h := NewHandler(nopLogger{}, repo)
+
+	for _, name := range []string{"a/b", "/", "x/start"} {
+		if err := h.Add(ctxFor("u1"), name); err == nil {
+			t.Errorf("Add(%q) = nil, want an error", name)
+		}
+	}
+	if len(repo.calls) != 0 {
+		t.Errorf("repository must not be called, got %v", repo.calls)
+	}
+}
+
 func TestHandlerPassesUserAndNameToRepository(t *testing.T) {
 	repo := &fakeRepository{}
 	h := NewHandler(nopLogger{}, repo)

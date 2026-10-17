@@ -106,11 +106,10 @@ export const projectService = {
         }
     },
 
-    createProject: async (projectName: string): Promise<Project> => {
+    createProject: async (projectName: string): Promise<void> => {
         try {
             const encodedName = encodeURIComponent(projectName);
-            const response = await api.post<Project>(`/projects/${encodedName}`);
-            return mapProject(response);
+            await api.post<void>(`/projects/${encodedName}`);
         } catch (error) {
             logErrorIfNeeded(error);
             throw error;

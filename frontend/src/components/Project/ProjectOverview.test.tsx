@@ -55,7 +55,6 @@ describe('ProjectOverview', () => {
         });
         vi.mocked(projectService.createProject).mockImplementation(async () => {
             created = true;
-            return project('beta');
         });
         renderOverview();
         await screen.findByText('alpha');
@@ -149,7 +148,7 @@ describe('ProjectOverview', () => {
 
     it('clears the error after a successful reload', async () => {
         serve(async () => { throw new Error('down'); });
-        vi.mocked(projectService.createProject).mockResolvedValue(project('beta'));
+        vi.mocked(projectService.createProject).mockResolvedValue();
         renderOverview();
         await screen.findByText('Error: down');
 

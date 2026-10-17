@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -39,9 +40,22 @@ func NewHandler(
 		return nil, fmt.Errorf("failed to create OIDC provider: %w", err)
 	}
 
-	verifier := provider.Verifier(&oidc.Config{
+	verifierConfig := &oidc.Config{
 		ClientID: oauthClientID,
-	})
+	}
+	verifier := provider.Verifier(verifierConfig)
+
+	if oauthDiscoveryURL != oauthServerURL {
+		// The provider may name its keys under the server URL, which the backend can't reach (Dex in the dev stack)
+		var endpoints struct {
+			JWKSURL string `json:"jwks_uri"`
+		}
+		if err := provider.Claims(&endpoints); err != nil {
+			return nil, fmt.Errorf("failed to parse OIDC discovery document: %w", err)
+		}
+		keySet := oidc.NewRemoteKeySet(ctx, rebaseURL(endpoints.JWKSURL, oauthServerURL, oauthDiscoveryURL))
+		verifier = oidc.NewVerifier(oauthServerURL, keySet, verifierConfig)
+	}
 
 	return &handlerImpl{
 		logger:         l,
@@ -73,4 +87,14 @@ func (h *handlerImpl) VerifyBearerToken(token string) (string, error) {
 	}
 
 	return claims.Sub, nil
+}
+
+func rebaseURL(url, from, to string) string {
+	from = strings.TrimSuffix(from, "/")
+	to = strings.TrimSuffix(to, "/")
+	rest, found := strings.CutPrefix(url, from)
+	if !found || (rest != "" && !strings.HasPrefix(rest, "/")) {
+		return url
+	}
+	return to + rest
 }

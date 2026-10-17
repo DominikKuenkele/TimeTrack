@@ -15,7 +15,11 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onProjectCreated 
     const handleCreateProject = async (e: React.FormEvent): Promise<void> => {
         e.preventDefault();
         if (!newProjectName.trim()) {
-            setError('Project name cannot be empty.');
+            setError('Error: Project name cannot be empty.');
+            return;
+        }
+        if (newProjectName.includes('/')) {
+            setError("Error: Project name must not contain '/'.");
             return;
         }
 

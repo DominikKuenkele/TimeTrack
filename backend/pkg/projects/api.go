@@ -44,7 +44,7 @@ func (a *apiImpl) HTTPHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	pathSegments := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	pathSegments := strings.Split(strings.Trim(r.URL.EscapedPath(), "/"), "/")
 
 	var (
 		err    error

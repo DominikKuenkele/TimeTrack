@@ -1,0 +1,54 @@
+# Dex of the e2e stack (compose.e2e.yaml): like config.yaml, but under the service names and with the test users.
+# Keep the emails and the password ("e2e-password") in sync with e2e/support/users.ts.
+issuer: http://dex:5556/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+  allowedOrigins: ["*"]
+
+telemetry:
+  http: 0.0.0.0:5558
+
+expiry:
+  idTokens: 24h
+
+oauth2:
+  skipApprovalScreen: true
+
+staticClients:
+  - id: timetrack-local-dev
+    name: TimeTrack
+    public: true
+    redirectURIs:
+      - http://frontend:3000/auth/callback
+
+enablePasswordDB: true
+
+staticPasswords:
+  - email: e2e-alice@timetrack.local
+    username: e2e-alice
+    userID: e2e-alice
+    hash: &password "$2y$10$ipZIJgKbxZ2wSUvXoFLGueWsDXX8e4vjo8bna463WHx8RmA.1zaeC"
+  - email: e2e-bob@timetrack.local
+    username: e2e-bob
+    userID: e2e-bob
+    hash: *password
+  - email: e2e-fresh-1@timetrack.local
+    username: e2e-fresh-1
+    userID: e2e-fresh-1
+    hash: *password
+  - email: e2e-fresh-2@timetrack.local
+    username: e2e-fresh-2
+    userID: e2e-fresh-2
+    hash: *password
+  - email: e2e-fresh-3@timetrack.local
+    username: e2e-fresh-3
+    userID: e2e-fresh-3
+    hash: *password
+  - email: e2e-fresh-4@timetrack.local
+    username: e2e-fresh-4
+    userID: e2e-fresh-4
+    hash: *password

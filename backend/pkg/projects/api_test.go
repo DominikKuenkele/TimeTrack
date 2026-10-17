@@ -83,6 +83,12 @@ func TestAPIRouting(t *testing.T) {
 		{http.MethodPost, "/projects/foo/stop", http.StatusOK, "stop:foo"},
 		{http.MethodGet, "/projects", http.StatusOK, "list"},
 		{http.MethodPost, "/projects/my%20project", http.StatusCreated, "add:my project"},
+		// decoded once only
+		{http.MethodPost, "/projects/a%2541", http.StatusCreated, "add:a%41"},
+		{http.MethodPost, "/projects/100%25", http.StatusCreated, "add:100%"},
+		{http.MethodPost, "/projects/a%2541/start", http.StatusOK, "start:a%41"},
+		// an encoded slash is part of the name, which the handler rejects, not a path separator
+		{http.MethodPost, "/projects/x%2Fstart", http.StatusCreated, "add:x/start"},
 	}
 
 	for _, tt := range tests {
@@ -150,21 +156,6 @@ func TestAPIInvalidInput(t *testing.T) {
 				t.Errorf("handler must not be called, got %v", h.calls)
 			}
 		})
-	}
-}
-
-// NewRequest rejects malformed escapes in the target, but Path can still carry them.
-func TestAPIInvalidPathEscape(t *testing.T) {
-	for _, path := range []string{"/projects/%zz", "/projects/foo/%zz"} {
-		h := &fakeHandler{}
-		req := httptest.NewRequest(http.MethodPost, "/projects", nil)
-		req.URL.Path = path
-		rec := httptest.NewRecorder()
-		NewAPI(nopLogger{}, h).HTTPHandler(rec, req.WithContext(user.ToContext(req.Context(), "u1")))
-
-		if rec.Code != http.StatusBadRequest || len(h.calls) != 0 {
-			t.Errorf("%s: status = %d, calls = %v", path, rec.Code, h.calls)
-		}
 	}
 }
 

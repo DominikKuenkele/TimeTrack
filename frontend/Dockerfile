@@ -18,6 +18,9 @@ COPY package.json package-lock.json ./
 
 RUN npm ci
 
+# The dev stack mounts the sources over this, the e2e stack (compose.e2e.yaml) has no mounts
+COPY . .
+
 EXPOSE 3000
 
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

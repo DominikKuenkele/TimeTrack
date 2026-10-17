@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"strings"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 	"github.com/DominikKuenkele/TimeTrack/libraries/user"
@@ -37,6 +38,9 @@ func NewHandler(l logger.Logger, repository Repository) Handler {
 func (h *handlerImpl) Add(ctx context.Context, name string) error {
 	if name == "" {
 		return errors.New("name must not be empty")
+	}
+	if strings.Contains(name, "/") {
+		return errors.New("name must not contain '/'")
 	}
 
 	return h.repository.AddProject(user.FromContext(ctx), name)
