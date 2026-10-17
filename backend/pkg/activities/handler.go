@@ -48,14 +48,9 @@ func (h *handlerImpl) GetDailyActivities(ctx context.Context, day time.Time) (pr
 		return projects.DailyActivities{}, err
 	}
 
-	var overtime int64
-	for _, day := range worktime {
-		overtime += int64(day.Worktime-day.Breaktime) - workHours
-	}
-
 	res := projects.DailyActivities{
 		Activities: activites,
-		Overtime:   overtime,
+		Overtime:   calculateOvertime(worktime),
 	}
 	res.CalculateBreaktime()
 	res.CalculateWorktime()
@@ -65,4 +60,13 @@ func (h *handlerImpl) GetDailyActivities(ctx context.Context, day time.Time) (pr
 
 func (h *handlerImpl) ChangeActivity(ctx context.Context, activity projects.Activity) error {
 	return h.repository.ChangeActivity(user.FromContext(ctx), activity)
+}
+
+func calculateOvertime(worktime []*projects.Worktime) int64 {
+	var overtime int64
+	for _, day := range worktime {
+		overtime += int64(day.Worktime-day.Breaktime) - workHours
+	}
+
+	return overtime
 }
