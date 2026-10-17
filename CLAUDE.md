@@ -11,6 +11,14 @@ goes through Authentik (OIDC); `compose.yaml` runs the whole dev stack including
 - `task fe:lint` / `fe:build`: ESLint (no warnings allowed), `tsc` and the Vite build.
 - `task up`: the dev stack (`docker compose`).
 
+## Tests
+
+- Unit tests (`task be:test`, frontend tests) cover logic that can break, without database or
+  other services; no tests for coverage, mappings or what only restates the code.
+- Logic worth testing that is tangled with SQL, HTTP or components gets pulled out into plain
+  functions (small, behaviour-preserving refactorings). Database access and whole flows are left
+  to the end-to-end tests.
+
 ## Automated agent runs
 
 When you run as the GitLab agent (implementing an issue in CI, not in a session with the user):
