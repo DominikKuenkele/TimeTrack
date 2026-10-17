@@ -1,7 +1,7 @@
 import { expect, test } from '../support/fixtures';
 import { pastDay, shiftDayString, uniqueName } from '../support/names';
 import {
-    activityItem, activityItems, goToActivities, openChangeDialogue, readSummary, selectDay, submitChange,
+    activityItem, activityItems, goToActivities, openChangeDialogue, readSummary, reloadActivities, selectDay, submitChange,
 } from '../support/ui';
 
 test.describe('list', () => {
@@ -295,7 +295,8 @@ test.describe('change', () => {
             await submitChange(item, { start: `${day}T09:00:00Z`, end: `${day}T09:00:00Z` });
 
             await expect(item.locator('.change-dialogue')).toHaveCount(0);
-            expect((await readSummary(page)).worktime).toBe(0);
+            // the dialogue closes before the activities are loaded again
+            await expect.poll(async () => (await readSummary(page)).worktime).toBe(0);
         });
     });
 });
@@ -371,11 +372,8 @@ test.describe('worktime and breaktime', () => {
 // The overtime sums up the days of a user (worktime - break - 8h each), so these tests need a user nobody else
 // worked as. The days a test creates stay, so they must not be repeated: no retries.
 test.describe('overtime', () => {
+    // A fresh user: the overtime adds up all days of the user, so a retry would start with this run's days
     test.describe.configure({ retries: 0 });
-
-    // The activities are created today and then moved to the day, which leaves a row for today in the
-    // worktime (close to 0 hours). That is why the tests compare the overtime before and after a change.
-    const tolerance = 5;
 
     test('is the sum of the days and follows the changes', async ({ login }) => {
         const { page, api } = await login('fresh1', '/activities');
@@ -384,33 +382,44 @@ test.describe('overtime', () => {
         const name = await api.createProject(uniqueName());
         expect((await readSummary(page)).overtime).toBe(0);
 
-        // exactly the 8 hours of a day
+        // exactly the 8 hours of a day (seeding starts the activity today, which no longer counts once it moved)
         const first = await api.seedActivity(name, day, '09:00', '17:00');
         await goToActivities(page, day);
-        const base = (await readSummary(page)).overtime;
-        expect((await readSummary(page)).worktime).toBe(8 * 3600);
+        expect(await readSummary(page)).toMatchObject({ worktime: 8 * 3600, overtime: 0 });
 
         // one more hour on that day
         const item = activityItem(page, first.id);
         await openChangeDialogue(item);
         await submitChange(item, { end: `${day}T18:00:00Z` });
-        await expect.poll(async () => (await readSummary(page)).overtime).toBe(base + 3600);
+        await expect.poll(async () => (await readSummary(page)).overtime).toBe(3600);
 
         // a second activity after a break adds its time but not the break
         await api.seedActivity(name, day, '19:00', '19:30');
         await page.reload();
         await selectDay(page, day);
-        await expect.poll(async () => Math.abs((await readSummary(page)).overtime - (base + 3600 + 1800))).toBeLessThanOrEqual(tolerance);
-        const afterSecond = (await readSummary(page)).overtime;
+        expect((await readSummary(page)).overtime).toBe(3600 + 1800);
 
         // a short day lowers the overtime of all days, which is shown on every day
-        await api.seedActivity(name, otherDay, '09:00', '15:00');
+        const short = await api.seedActivity(name, otherDay, '09:00', '15:00');
         await page.reload();
         await selectDay(page, otherDay);
-        await expect.poll(async () => Math.abs((await readSummary(page)).overtime - (afterSecond - 2 * 3600))).toBeLessThanOrEqual(tolerance);
+        expect((await readSummary(page)).overtime).toBe(3600 + 1800 - 2 * 3600);
         await selectDay(page, day);
-        await expect.poll(async () => Math.abs((await readSummary(page)).overtime - (afterSecond - 2 * 3600))).toBeLessThanOrEqual(tolerance);
+        expect((await readSummary(page)).overtime).toBe(3600 + 1800 - 2 * 3600);
 
+        // moved to another day as a full day, the short day no longer counts
+        const response = await api.changeActivity(short.id, {
+            projectName: name, startedAt: `${shiftDayString(day, 20)}T09:00:00Z`, endedAt: `${shiftDayString(day, 20)}T17:00:00Z`,
+        });
+        expect(response.ok()).toBe(true);
+        await page.reload();
+        await selectDay(page, day);
+        expect((await readSummary(page)).overtime).toBe(3600 + 1800);
         await expect(activityItem(page, first.id)).toBeVisible();
+
+        // with the project, all of its days are gone
+        await api.deleteProject(name);
+        await reloadActivities(page);
+        expect((await readSummary(page)).overtime).toBe(0);
     });
 });

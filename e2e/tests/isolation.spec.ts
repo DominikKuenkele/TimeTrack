@@ -1,6 +1,6 @@
 import { expect, test } from '../support/fixtures';
 import { pastDay, uniqueName } from '../support/names';
-import { activityItem, activityItems, createProject, goToActivities, projectItem, readSummary, searchProjects } from '../support/ui';
+import { activityItem, activityItems, createProject, goToActivities, projectItem, readSummary, reloadActivities, searchProjects } from '../support/ui';
 
 test.describe('two users', () => {
     test('do not see each others projects', async ({ login }) => {
@@ -118,10 +118,7 @@ test.describe('two users', () => {
         expect((await alice.api.dailyActivities(day)).activities).toHaveLength(0);
     });
 
-    // The backend checks that the new project belongs to the user, but not that the activity does
-    // (ChangeActivity updates by the activity id alone). Remove test.fail() when that is fixed.
     test('cannot change the activity of the other', async ({ login }) => {
-        test.fail();
         const alice = await login('alice');
         const bob = await login('bob');
         const day = pastDay();
@@ -142,8 +139,8 @@ test.describe('two users', () => {
         const day = pastDay();
         await first.api.seedActivity(await first.api.createProject(uniqueName()), day, '09:00', '12:00');
 
-        await first.page.reload();
-        await second.page.reload();
+        await reloadActivities(first.page);
+        await reloadActivities(second.page);
 
         expect((await readSummary(first.page)).overtime).not.toBe(0);
         expect((await readSummary(second.page)).overtime).toBe(0);

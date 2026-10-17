@@ -4,7 +4,8 @@
 # - No bind mounts, no published ports and no debugger: the CI runner talks to a remote rootless docker
 #   daemon, on which paths of the checkout don't exist. What the dev setup mounts is built into images instead.
 # - The browser (the `e2e` service, inside the network) and the backend reach Dex, the frontend and the backend by
-#   their service names, so the backend needs no separate discovery URL.
+#   their service names. The backend discovers Dex under the URL its tokens name, so the discovery URL only
+#   replaces the one of the dev stack.
 # - Backend and browser run in UTC like the database.
 # - Dex runs with config.e2e.yaml: the issuer under its service name and the test users.
 services:

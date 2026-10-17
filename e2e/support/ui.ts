@@ -23,6 +23,12 @@ export const selectDay = async (page: Page, day: string) => {
     await expect(page.locator(`.activity-overview[data-day="${day}"]`)).toBeAttached();
 };
 
+// Loads the activities page again (with today), and waits until it shows the loaded activities
+export const reloadActivities = async (page: Page) => {
+    await page.reload();
+    await expect(page.locator('.activity-overview[data-day]')).toBeAttached();
+};
+
 export const activityItems = (page: Page) => page.locator('.activity-item');
 
 export const activityItem = (page: Page, id: number) => page.locator(`.activity-item[data-id="${id}"]`);

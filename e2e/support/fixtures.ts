@@ -28,7 +28,8 @@ export const test = base.extend<Fixtures>({
             });
             const page = await context.newPage();
             await page.goto(path);
-            await projectsHeading(page).or(page.getByRole('heading', { name: 'Activities', level: 2 })).waitFor({ timeout: 30_000 });
+            // the activities page also has to load the activities of the day, before its summary means anything
+            await projectsHeading(page).or(page.locator('.activity-overview[data-day]')).waitFor({ timeout: 30_000 });
 
             const session = { context, page, api: new Api(page, context.request) };
             sessions.push(session);

@@ -70,6 +70,11 @@ export class Api {
         await this.ok('DELETE', Api.projectPath(name));
     }
 
+    async project(name: string): Promise<ApiProject & { activities: ApiActivity[] }> {
+        const response = await this.ok('GET', Api.projectPath(name));
+        return response.json();
+    }
+
     async projects(search = '', perPage = 1000): Promise<PaginatedProjects> {
         const response = await this.ok('GET', `/projects/?page=1&per_page=${perPage}&search_term=${encodeURIComponent(search)}`);
         return response.json();
@@ -89,10 +94,10 @@ export class Api {
         await this.startProject(projectName);
         await this.stopProject(projectName);
 
-        const today = new Date().toISOString().slice(0, 10);
-        const created = (await this.dailyActivities(today)).activities
-            .filter((a) => a.projectName === projectName)
-            .reduce((latest, a) => (a.id > latest.id ? a : latest));
+        // the newest activity of the project, found by the project rather than by today (which may just have changed)
+        const ids = (await this.project(projectName)).activities.map((a) => a.id);
+        if (ids.length === 0) throw new Error(`seeding activity failed: project ${projectName} has no activity`);
+        const created = { id: Math.max(...ids) };
 
         const startedAt = `${day}T${from}:00Z`;
         const endedAt = `${day}T${to}:00Z`;

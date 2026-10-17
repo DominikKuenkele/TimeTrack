@@ -9,7 +9,9 @@ export default defineConfig({
     workers: 1,
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
+    // On CI the retry records a trace, but a test that only passes on the retry still fails the job
     retries: process.env.CI ? 1 : 0,
+    failOnFlakyTests: !!process.env.CI,
     reporter: [
         ['list'],
         ['html', { open: 'never' }],
