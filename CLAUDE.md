@@ -6,10 +6,16 @@ goes through Authentik (OIDC); `compose.yaml` runs the whole dev stack including
 
 ## Checks
 
-- `task check`: everything below; CI runs it on merge requests and builds the images on tags.
+- `task check`: everything below; CI runs it on merge requests and on `main`.
 - `task be:lint` / `be:build` / `be:test`: `go vet`, `go build`, `go test` in `backend/pkg/`.
 - `task fe:lint` / `fe:build`: ESLint (no warnings allowed), `tsc` and the Vite build.
 - `task up`: the dev stack (`docker compose`).
+
+## Releasing
+
+Every merge to `main` is a release: its pipeline checks, builds the images as
+`<date>-<pipeline>` and `:latest`, and records a GitLab release `deploy-<version>` with the merged
+MRs (`ci/release-notes.sh`). No tags by hand; to roll back, revert on `main`.
 
 ## Tests
 
