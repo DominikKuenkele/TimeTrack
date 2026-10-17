@@ -20,8 +20,15 @@ tasks:
     cmds:
       - npm run build
 
+  test:
+    desc: Unit and component tests (Vitest)
+    deps: [deps]
+    cmds:
+      - npm run test
+
   check:
-    desc: Lint and build the frontend
+    desc: Lint, build and test the frontend
     cmds:
       - task: lint
       - task: build
+      - task: test

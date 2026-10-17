@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getPageRange } from '../utils/paginationUtils';
 import './Pagination.css';
 
 
@@ -53,65 +54,21 @@ const Pagination: React.FC<PaginationProps> = ({
     };
 
     const renderPageNumbers = () => {
-        const pageNumbers: React.ReactNode[] = [];
-        const maxPageButtons = 5;
-
-        let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
-        const endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
-
-        if (endPage - startPage + 1 < maxPageButtons) {
-            startPage = Math.max(1, endPage - maxPageButtons + 1);
-        }
-
-        if (startPage > 1) {
-            pageNumbers.push(
-                <button
-                    key="1"
-                    onClick={() => handlePageChange(1)}
-                    className={`pagination-page-button ${1 === currentPage ? 'active' : ''}`}
-                >
-                    1
-                </button>
-            );
-
-            if (startPage > 2) {
-                pageNumbers.push(
-                    <span key="ellipsis1" className="pagination-ellipsis">...</span>
-                );
-            }
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            pageNumbers.push(
-                <button
-                    key={i}
-                    onClick={() => handlePageChange(i)}
-                    className={`pagination-page-button ${i === currentPage ? 'active' : ''}`}
-                >
-                    {i}
-                </button>
-            );
-        }
-
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                pageNumbers.push(
-                    <span key="ellipsis2" className="pagination-ellipsis">...</span>
-                );
+        return getPageRange(currentPage, totalPages).map((page, index) => {
+            if (page === 'ellipsis') {
+                return <span key={`ellipsis${index}`} className="pagination-ellipsis">...</span>;
             }
 
-            pageNumbers.push(
+            return (
                 <button
-                    key={totalPages}
-                    onClick={() => handlePageChange(totalPages)}
-                    className={`pagination-page-button ${totalPages === currentPage ? 'active' : ''}`}
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`pagination-page-button ${page === currentPage ? 'active' : ''}`}
                 >
-                    {totalPages}
+                    {page}
                 </button>
             );
-        }
-
-        return pageNumbers;
+        });
     };
 
 

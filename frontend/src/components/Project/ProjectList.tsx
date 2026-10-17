@@ -1,5 +1,6 @@
 import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Project } from '../../types';
+import { computeMoves } from '../../utils/animationUtils';
 import Pagination from '../Pagination';
 import ProjectItem from './ProjectItem';
 import './ProjectList.css';
@@ -113,42 +114,38 @@ const ProjectList: React.FC<ProjectListProps> = ({
 
             const projectElements = projectListRef.current.querySelectorAll('.project-item');
 
+            const elements = new Map<string, HTMLElement>();
             projectElements.forEach((el) => {
                 const id = el.getAttribute('data-id');
-                if (id && previousPos[id] && currentPositions[id]) {
-                    const deltaY = previousPos[id].top - currentPositions[id].top;
-
-                    if (Math.abs(deltaY) > 5) {
-                        el.classList.add('animating');
-                        movingItems.add(id);
-
-                        const htmlEl = el as HTMLElement;
-
-                        const isMovingUp = deltaY > 0;
-                        const isMovingToTop = id === currentFirstPositionId && isMovingUp;
-
-                        const wasAtTop = id === previousFirstPositionId && id !== currentFirstPositionId;
-
-                        if (isMovingToTop) {
-                            htmlEl.style.zIndex = '15';
-                            topMovers.add(id);
-                        } else if (wasAtTop) {
-                            htmlEl.style.zIndex = '10';
-                            fromTopMovers.add(id);
-                        } else {
-                            htmlEl.style.zIndex = isMovingUp ? '5' : '1';
-                        }
-
-                        htmlEl.style.transform = `translateY(${deltaY}px)`;
-                        htmlEl.style.transition = 'none';
-
-                        void htmlEl.offsetHeight;
-
-                        htmlEl.style.transform = '';
-                        htmlEl.style.transition = 'transform 0.5s ease-out';
-                    }
-                }
+                if (id) elements.set(id, el as HTMLElement);
             });
+
+            computeMoves(previousPos, currentPositions, currentFirstPositionId, previousFirstPositionId)
+                .forEach(({ id, deltaY, kind }) => {
+                    const htmlEl = elements.get(id);
+                    if (!htmlEl) return;
+
+                    htmlEl.classList.add('animating');
+                    movingItems.add(id);
+
+                    if (kind === 'toTop') {
+                        htmlEl.style.zIndex = '15';
+                        topMovers.add(id);
+                    } else if (kind === 'fromTop') {
+                        htmlEl.style.zIndex = '10';
+                        fromTopMovers.add(id);
+                    } else {
+                        htmlEl.style.zIndex = deltaY > 0 ? '5' : '1';
+                    }
+
+                    htmlEl.style.transform = `translateY(${deltaY}px)`;
+                    htmlEl.style.transition = 'none';
+
+                    void htmlEl.offsetHeight;
+
+                    htmlEl.style.transform = '';
+                    htmlEl.style.transition = 'transform 0.5s ease-out';
+                });
 
             setAnimatingItems(movingItems);
             setMovingToTop(topMovers);

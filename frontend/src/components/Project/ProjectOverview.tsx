@@ -42,7 +42,7 @@ const ProjectOverview: React.FC = () => {
         projectService.getProjectsLike(currentPage, perPage, searchTerm)
             .then((data) => {
                 if (cancelled) return;
-                if (currentPage > data.totalPages) {
+                if (data.totalPages > 0 && currentPage > data.totalPages) {
                     setCurrentPage(data.totalPages)
                 }
                 setProjects(data.projects);
