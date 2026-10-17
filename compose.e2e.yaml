@@ -57,6 +57,13 @@ services:
     image: timetrack-e2e-authentik
     ports: !reset []
     volumes: !reset []
+    # The worker applies the blueprints, which the healthcheck waits for. Nothing else depends on it, so
+    # `run e2e` wouldn't start it.
+    depends_on:
+      authentik-postgresql:
+        condition: service_healthy
+      authentik-worker:
+        condition: service_started
     healthcheck:
       test:
         - CMD-SHELL
