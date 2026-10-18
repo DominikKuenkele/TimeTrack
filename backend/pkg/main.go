@@ -19,6 +19,12 @@ func defaultHandler(l logger.Logger) http.HandlerFunc {
 	}
 }
 
+func healthHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}
+}
+
 func main() {
 	cfg, err := config.ReadConfig()
 	if err != nil {
@@ -44,6 +50,7 @@ func main() {
 
 	server := server.NewServer("", "80", cfg.FrontendAddress, logger)
 	server.AddHandler("/", defaultHandler(logger))
+	server.AddHandler("/health", healthHandler())
 
 	authenticatorAPI, err := authentification.BuildAuthenticator(
 		logger,
