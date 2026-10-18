@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"net/http"
-	"time"
 
 	"github.com/DominikKuenkele/TimeTrack/activities"
 	"github.com/DominikKuenkele/TimeTrack/authentification"
@@ -21,16 +19,8 @@ func defaultHandler(l logger.Logger) http.HandlerFunc {
 	}
 }
 
-func healthHandler(l logger.Logger, db database.Database) http.HandlerFunc {
+func healthHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-		defer cancel()
-
-		if err := db.Ping(ctx); err != nil {
-			l.Error("Health check failed: %v", err)
-			w.WriteHeader(http.StatusServiceUnavailable)
-			return
-		}
 		w.WriteHeader(http.StatusOK)
 	}
 }
@@ -60,7 +50,7 @@ func main() {
 
 	server := server.NewServer("", "80", cfg.FrontendAddress, logger)
 	server.AddHandler("/", defaultHandler(logger))
-	server.AddHandler("/health", healthHandler(logger, database))
+	server.AddHandler("/health", healthHandler())
 
 	authenticatorAPI, err := authentification.BuildAuthenticator(
 		logger,
