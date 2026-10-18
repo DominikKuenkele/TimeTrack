@@ -26,9 +26,16 @@ tasks:
     cmds:
       - npm run test
 
+  security:
+    desc: Known vulnerabilities in production dependencies (npm audit)
+    deps: [deps]
+    cmds:
+      - npm audit --omit=dev
+
   check:
-    desc: Lint, build and test the frontend
+    desc: Lint, build, test and security-check the frontend
     cmds:
       - task: lint
       - task: build
       - task: test
+      - task: security

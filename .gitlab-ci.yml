@@ -3,7 +3,9 @@ stages: [prepare, check, build, deliver]
 variables:
   GO_VERSION: "1.26"
   NODE_VERSION: "24"
-  CHECK_IMAGE: $CI_REGISTRY_IMAGE/ci/check:go-$GO_VERSION-node-$NODE_VERSION
+  # Raise CHECK_IMAGE_REV when ci/check/Dockerfile changes (tool versions), so the image is rebuilt
+  CHECK_IMAGE_REV: "2"
+  CHECK_IMAGE: $CI_REGISTRY_IMAGE/ci/check:go-$GO_VERSION-node-$NODE_VERSION-r$CHECK_IMAGE_REV
 
 .on_mr_or_main:
   rules:

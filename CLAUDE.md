@@ -10,6 +10,8 @@ goes through OIDC; `compose.yaml` runs the whole dev stack including Dex as the 
 - `task check`: everything below; CI runs it on merge requests and on `main`.
 - `task be:lint` / `be:build` / `be:test`: `go vet`, `go build`, `go test` in `backend/pkg/`.
 - `task fe:lint` / `fe:build`: ESLint (no warnings allowed), `tsc` and the Vite build.
+- `task be:security` / `fe:security`: `govulncheck` and `npm audit --omit=dev`. Any finding fails the
+  check; fix it (or have it fixed in a separate MR first). No other security tooling for now.
 - `task up`: the dev stack (`docker compose`).
 - `task test:e2e`: Playwright tests in `e2e/` against the whole stack (`compose.yaml` plus
   `compose.e2e.yaml`: no mounts, service-name URLs, Dex test users from `config.e2e.yaml`). Needs
@@ -30,6 +32,12 @@ MRs (`ci/release-notes.sh`). No tags by hand; to roll back, revert on `main`.
 - Logic worth testing that is tangled with SQL, HTTP or components gets pulled out into plain
   functions (small, behaviour-preserving refactorings). Database access and whole flows are left
   to the end-to-end tests.
+
+## Done
+
+A change is done when `task check` is green, new logic has unit tests, new user features have e2e
+tests (type-checked with `npm run lint` in `e2e/` when changed) and nothing outside the scope of the
+issue was changed. When `ci/check/Dockerfile` changes, raise `CHECK_IMAGE_REV` in `.gitlab-ci.yml`.
 
 ## Automated agent runs
 
