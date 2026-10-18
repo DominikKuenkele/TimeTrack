@@ -16,9 +16,15 @@ tasks:
     cmds:
       - go test ./...
 
+  security:
+    desc: Known vulnerabilities in dependencies and the standard library (govulncheck)
+    cmds:
+      - govulncheck ./...
+
   check:
-    desc: Lint, build and test the backend
+    desc: Lint, build, test and security-check the backend
     cmds:
       - task: lint
       - task: build
       - task: test
+      - task: security

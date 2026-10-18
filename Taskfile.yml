@@ -14,7 +14,7 @@ vars:
 
 tasks:
   check:
-    desc: Lint, build and test backend and frontend (what CI runs on merge requests)
+    desc: Lint, build, test and security-check backend and frontend (what CI runs on merge requests)
     cmds:
       - task: be:check
       - task: fe:check
