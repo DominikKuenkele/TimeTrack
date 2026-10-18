@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ type Database interface {
 	ExecWithTx(tx *sql.Tx, query string, args ...any) (sql.Result, error)
 	Query(query string, args ...any) (*sql.Rows, error)
 	QueryRow(query string, args []any, dest ...any) error
+	Ping(ctx context.Context) error
 	Close()
 }
 
@@ -114,6 +116,10 @@ func (i *impl) QueryRow(query string, args []any, dest ...any) error {
 	}
 
 	return nil
+}
+
+func (i *impl) Ping(ctx context.Context) error {
+	return i.db.PingContext(ctx)
 }
 
 func (i *impl) Close() {
