@@ -19,6 +19,11 @@ goes through OIDC; `compose.yaml` runs the whole dev stack including Dex as the 
 
 ## Releasing
 
+A merge request's `deploy_test` (manual) builds its images and runs them on
+`test.dominik-kuenkele.de`, a slot shared with other projects (`test-slot.yml` in the `ci-templates` repo;
+the server repo holds the slot's compose file and environment). Changes to env vars or services must be
+deployed there first.
+
 Every merge to `main` is a release: its pipeline checks, builds the images as
 `<date>-<pipeline>` and `:latest`, and records a GitLab release `deploy-<version>` with the merged
 MRs (`ci/release-notes.sh`). No tags by hand; to roll back, revert on `main`.

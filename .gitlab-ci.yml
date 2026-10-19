@@ -1,3 +1,8 @@
+include:
+  - project: Dominik/ci-templates
+    ref: main
+    file: test-slot.yml
+
 stages: [prepare, check, build, deliver]
 
 variables:
@@ -83,6 +88,22 @@ build_frontend:
       EOF
     - docker build --target prod -t "$CI_REGISTRY_IMAGE/frontend:$VERSION" -t "$CI_REGISTRY_IMAGE/frontend:latest" frontend
     - docker push --all-tags "$CI_REGISTRY_IMAGE/frontend"
+
+deploy_test:
+  extends: [.docker, .test_slot_deploy]
+  script:
+    - |
+      cat > frontend/.env <<EOF
+      VITE_API_URL=https://test.dominik-kuenkele.de:5050
+      VITE_NODE_ENV=production
+      VITE_OIDC_AUTHORITY=https://authentik.dominik-kuenkele.de/application/o/timetrack-test/
+      VITE_OIDC_CLIENT_ID=CYBZYiPnzOVTer2ehlTCodaOMpXXqbTzb70iTf7X
+      EOF
+    - docker build --target prod -t "$CI_REGISTRY_IMAGE/backend:$TEST_SLOT_TAG" backend
+    - docker build --target prod -t "$CI_REGISTRY_IMAGE/frontend:$TEST_SLOT_TAG" frontend
+    - docker build -t "$CI_REGISTRY_IMAGE/db:$TEST_SLOT_TAG" -f backend/database/Dockerfile.e2e backend/database
+    - for image in backend frontend db; do docker push "$CI_REGISTRY_IMAGE/$image:$TEST_SLOT_TAG"; done
+    - !reference [.test_slot_deploy, script]
 
 deliver:
   extends: .on_main
