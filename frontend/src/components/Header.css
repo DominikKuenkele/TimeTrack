@@ -70,3 +70,12 @@ nav a {
 nav a:hover {
     opacity: 0.8;
 }
+
+.test-slot-banner {
+    background-color: #f1c40f;
+    color: #2c3e50;
+    font-weight: 600;
+    text-align: center;
+    padding: 0.4rem;
+    margin-top: 0.5rem;
+}

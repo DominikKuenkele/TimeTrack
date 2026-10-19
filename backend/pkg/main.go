@@ -25,6 +25,13 @@ func healthHandler() http.HandlerFunc {
 	}
 }
 
+func greetingHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"message":"Hello from the test slot backend"}`))
+	}
+}
+
 func main() {
 	cfg, err := config.ReadConfig()
 	if err != nil {
@@ -51,6 +58,7 @@ func main() {
 	server := server.NewServer("", "80", cfg.FrontendAddress, logger)
 	server.AddHandler("/", defaultHandler(logger))
 	server.AddHandler("/health", healthHandler())
+	server.AddHandler("/greeting", greetingHandler())
 
 	authenticatorAPI, err := authentification.BuildAuthenticator(
 		logger,
