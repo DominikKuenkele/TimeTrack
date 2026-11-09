@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim
+FROM node:26-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68
 
 # Only the full Chromium the tests run in (playwright.config.ts), not the other browsers of Playwright's own image.
 # Installed before `npm ci`, so that the layer stays cached until the version changes.
