@@ -26,7 +26,7 @@ variables:
 
 # The runner mounts the socket of its own rootless daemon, which only runs CI.
 .docker:
-  image: docker:29.8.1-cli
+  image: docker:29.9.3-cli@sha256:2357639ad1ea7d0194134bf3292622fd4e562483966ed674e5d7c945b5f3b28d
   before_script:
     - *version
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
