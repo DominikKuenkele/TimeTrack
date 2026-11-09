@@ -68,6 +68,16 @@ e2e:
     reports:
       junit: e2e/junit/junit.xml
 
+# Renovate merges once the MR pipeline passes; e2e builds the backend's prod image, not the frontend's
+check_frontend_image:
+  extends: .docker
+  stage: build
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  script:
+    - docker build --pull --target prod frontend
+
 build_backend:
   extends: [.on_main, .docker]
   stage: build
