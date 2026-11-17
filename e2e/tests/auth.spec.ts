@@ -3,7 +3,6 @@ import { authHeaders } from '../support/auth';
 import { API_URL } from '../support/env';
 import { expect, test } from '../support/fixtures';
 import { uniqueName } from '../support/names';
-import { projectItem } from '../support/ui';
 import { users } from '../support/users';
 
 // Authentik's forward auth signs users in before a request reaches the app, so the app only sees its headers
@@ -45,17 +44,4 @@ test('logout leads to the sign-out of Authentik', async ({ login }) => {
     const { page } = await login('alice');
 
     await expect(page.getByRole('link', { name: 'Logout' })).toHaveAttribute('href', '/outpost.goauthentik.io/sign_out');
-});
-
-// Before forward auth, the data of a user was stored under their username (the subject of their OIDC token)
-test('a user takes over the data stored under their username', async ({ login }) => {
-    const username = uniqueName('legacy');
-    const before = await login({ uid: username });
-    const name = await before.api.createProject(uniqueName());
-    await before.api.startProject(name);
-
-    const after = await login({ uid: uniqueName('uid'), username });
-
-    await expect(projectItem(after.page, name)).toContainText('Active');
-    expect((await before.api.projects(name)).total).toBe(0);
 });

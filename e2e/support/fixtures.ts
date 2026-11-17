@@ -2,7 +2,7 @@ import { BrowserContext, Page, test as base } from '@playwright/test';
 import { Api } from './api';
 import { authHeaders, projectsHeading } from './auth';
 import { BASE_URL } from './env';
-import { Identity, UserKey, users } from './users';
+import { UserKey, users } from './users';
 
 export interface Session {
     context: BrowserContext;
@@ -12,7 +12,7 @@ export interface Session {
 
 interface Fixtures {
     // Opens the app as a user, whose every request carries the headers of forward auth
-    login: (user: UserKey | Identity, path?: string) => Promise<Session>;
+    login: (user: UserKey, path?: string) => Promise<Session>;
 }
 
 export const test = base.extend<Fixtures>({
@@ -22,7 +22,7 @@ export const test = base.extend<Fixtures>({
         await use(async (user, path = '/projects') => {
             const context = await browser.newContext({
                 baseURL: BASE_URL,
-                extraHTTPHeaders: authHeaders(typeof user === 'string' ? users[user] : user),
+                extraHTTPHeaders: authHeaders(users[user]),
                 timezoneId: 'UTC',
                 locale: 'en-US',
             });

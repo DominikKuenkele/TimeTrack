@@ -4,8 +4,6 @@ import { dateToDayString } from '../utils/timeUtils';
 const API_BASE_URL = '/api';
 const NODE_ENV = import.meta.env.VITE_NODE_ENV;
 
-type RequestOptions = RequestInit;
-
 const logErrorIfNeeded = (error: unknown) => {
     if (NODE_ENV !== 'production') {
         console.log('API Error Response:', (error as { response?: { data?: unknown } })?.response?.data);
@@ -44,7 +42,7 @@ function reloadForLogin() {
     window.location.reload();
 }
 
-async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const { headers = {}, ...rest } = options;
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -70,24 +68,24 @@ async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Pr
 }
 
 export const api = {
-    get: <T>(endpoint: string, options?: RequestOptions) =>
+    get: <T>(endpoint: string, options?: RequestInit) =>
         apiRequest<T>(endpoint, { ...options, method: 'GET' }),
 
-    post: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
+    post: <T>(endpoint: string, data?: unknown, options?: RequestInit) =>
         apiRequest<T>(endpoint, {
             ...options,
             method: 'POST',
             body: JSON.stringify(data),
         }),
 
-    put: <T>(endpoint: string, data?: unknown, options?: RequestOptions) =>
+    put: <T>(endpoint: string, data?: unknown, options?: RequestInit) =>
         apiRequest<T>(endpoint, {
             ...options,
             method: 'PUT',
             body: JSON.stringify(data),
         }),
 
-    delete: <T>(endpoint: string, options?: RequestOptions) =>
+    delete: <T>(endpoint: string, options?: RequestInit) =>
         apiRequest<T>(endpoint, { ...options, method: 'DELETE' }),
 };
 

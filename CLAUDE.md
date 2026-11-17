@@ -9,8 +9,7 @@ Authentik's forward auth in front of the app (Traefik middleware, configured in 
 signs users in on every request and passes them in `X-authentik-uid` and `X-authentik-username`.
 The app has no login of its own and holds no tokens; the backend answers 401 without the headers,
 so it must only be reachable through the proxy. Frontend and API share one host, the API under
-`/api` (Vite proxies it in the dev stack). Data belongs to the uid; data from before, stored under
-the username (the old OIDC subject), moves to the uid on the user's first request.
+`/api` (Vite proxies it in the dev stack). Data belongs to the uid.
 - A request of an expired session gets Authentik's redirect to its login (or a 401), which `fetch`
   can't follow: the frontend reloads the page for the login, at most once a minute so a login that
   doesn't help can't loop. Logout is the outpost's `/outpost.goauthentik.io/sign_out`.

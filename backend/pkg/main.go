@@ -52,7 +52,7 @@ func main() {
 	server.AddHandler("/", defaultHandler(logger))
 	server.AddHandler("/health", healthHandler())
 
-	authenticatorAPI := authentification.BuildAuthenticator(logger, database, cfg.DevUser)
+	authenticatorAPI := authentification.BuildAuthenticator(cfg.DevUser)
 
 	projectAPI, err := projects.BuildProject(logger, database)
 	if err != nil {

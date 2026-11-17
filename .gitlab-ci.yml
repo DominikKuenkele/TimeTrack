@@ -101,10 +101,7 @@ deploy_test:
   script:
     - |
       cat > frontend/.env <<EOF
-      VITE_API_URL=https://test.dominik-kuenkele.de:5050
       VITE_NODE_ENV=production
-      VITE_OIDC_AUTHORITY=https://authentik.dominik-kuenkele.de/application/o/timetrack-test/
-      VITE_OIDC_CLIENT_ID=CYBZYiPnzOVTer2ehlTCodaOMpXXqbTzb70iTf7X
       EOF
     - docker build --target prod -t "$CI_REGISTRY_IMAGE/backend:$TEST_SLOT_TAG" backend
     - docker build --target prod -t "$CI_REGISTRY_IMAGE/frontend:$TEST_SLOT_TAG" frontend
