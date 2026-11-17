@@ -9,7 +9,6 @@ import ProjectOverview from './ProjectOverview';
 vi.mock('../../services/api', () => ({
     projectService: { getProjectsLike: vi.fn(), createProject: vi.fn() },
 }));
-vi.mock('../useAuth', () => ({ useAuth: () => ({ isLoggedIn: true, isLoading: false }) }));
 // the list itself is not under test, only what the overview passes to it
 vi.mock('./ProjectItem', () => ({
     default: ({ project }: { project: Project }) => <div className="project-item">{project.name}</div>,

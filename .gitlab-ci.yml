@@ -91,10 +91,7 @@ build_frontend:
   script:
     - |
       cat > frontend/.env <<EOF
-      VITE_API_URL=${VITE_API_URL}
       VITE_NODE_ENV=${VITE_NODE_ENV}
-      VITE_OIDC_AUTHORITY=${VITE_OIDC_AUTHORITY}
-      VITE_OIDC_CLIENT_ID=${VITE_OIDC_CLIENT_ID}
       EOF
     - docker build --target prod -t "$CI_REGISTRY_IMAGE/frontend:$VERSION" -t "$CI_REGISTRY_IMAGE/frontend:latest" frontend
     - docker push --all-tags "$CI_REGISTRY_IMAGE/frontend"

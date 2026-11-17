@@ -1,13 +1,10 @@
 import { Activity, DailyActivities, PaginatedProjects, Project } from '../types';
-import { getUser } from '../utils/auth';
 import { dateToDayString } from '../utils/timeUtils';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = '/api';
 const NODE_ENV = import.meta.env.VITE_NODE_ENV;
 
-interface RequestOptions extends RequestInit {
-    requiresAuth?: boolean;
-}
+type RequestOptions = RequestInit;
 
 const logErrorIfNeeded = (error: unknown) => {
     if (NODE_ENV !== 'production') {
@@ -31,34 +28,40 @@ const mapActivity = (activity: Activity): Activity => {
     };
 };
 
-async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { requiresAuth = true, headers = {}, ...rest } = options;
+// Set when the page reloaded for an expired session, so a login that doesn't help can't loop
+const RELOADED_AT_KEY = 'timetrack.sessionReloadedAt';
+const RELOAD_GUARD_MS = 60_000;
 
-    const requestHeaders = new Headers({
-        'Content-Type': 'application/json',
-        ...headers,
-    });
-
-    if (requiresAuth) {
-        const user = await getUser();
-        if (!user?.access_token) {
-            throw new Error('No access token available');
-        }
-        requestHeaders.set('Authorization', `Bearer ${user.access_token}`);
+// Authentik's forward auth signs the user in on a page load; a request can only find the session gone
+function reloadForLogin() {
+    try {
+        const reloadedAt = Number(window.sessionStorage.getItem(RELOADED_AT_KEY) ?? 0);
+        if (Date.now() - reloadedAt < RELOAD_GUARD_MS) return;
+        window.sessionStorage.setItem(RELOADED_AT_KEY, String(Date.now()));
+    } catch {
+        return;
     }
+    window.location.reload();
+}
+
+async function apiRequest<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+    const { headers = {}, ...rest } = options;
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        headers: requestHeaders,
+        headers: new Headers({
+            'Content-Type': 'application/json',
+            ...headers,
+        }),
         ...rest,
-        credentials: 'include', // Include cookies in requests
+        // An expired session answers with a redirect to Authentik's login, which fetch can't follow
+        redirect: 'manual',
     });
 
+    if (response.type === 'opaqueredirect' || response.status === 401) {
+        reloadForLogin();
+        throw new Error('Session expired');
+    }
     if (!response.ok) {
-        if (response.status === 401) {
-            // Handle unauthorized access
-            window.location.href = '/auth/login';
-            throw new Error('Unauthorized');
-        }
         throw new Error(`API request failed: ${response.statusText}`);
     }
 

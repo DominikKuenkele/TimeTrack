@@ -10,7 +10,6 @@ import ActivityOverview from './ActivityOverview';
 vi.mock('../../services/api', () => ({
     activityService: { getDailyActivities: vi.fn(), changeActivity: vi.fn() },
 }));
-vi.mock('../useAuth', () => ({ useAuth: () => ({ isLoggedIn: true, isLoading: false }) }));
 
 const activity = (id: number, projectName: string): Activity => ({
     id,

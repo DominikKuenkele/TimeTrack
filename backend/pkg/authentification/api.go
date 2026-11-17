@@ -2,56 +2,67 @@ package authentification
 
 import (
 	"net/http"
-	"strings"
+	"sync"
 
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 	"github.com/DominikKuenkele/TimeTrack/libraries/user"
 )
 
-const Prefix = "/user"
+const (
+	uidHeader      = "X-authentik-uid"
+	usernameHeader = "X-authentik-username"
+)
 
 type API interface {
 	Authenticate(next http.HandlerFunc) http.HandlerFunc
 }
 
 type apiImpl struct {
-	logger                  logger.Logger
-	authentificationHandler Handler
+	logger  logger.Logger
+	handler Handler
+	devUser string
+	adopted sync.Map
 }
 
 var _ API = &apiImpl{}
 
-func NewAPI(logger logger.Logger, authentificationHandler Handler) API {
+func NewAPI(logger logger.Logger, handler Handler, devUser string) API {
 	return &apiImpl{
-		logger:                  logger,
-		authentificationHandler: authentificationHandler,
+		logger:  logger,
+		handler: handler,
+		devUser: devUser,
 	}
 }
 
 func (a *apiImpl) Authenticate(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if token := extractBearerToken(r); token != "" {
-			if userID, err := a.authentificationHandler.VerifyBearerToken(token); err == nil {
-				ctx := user.ToContext(r.Context(), userID)
-				next.ServeHTTP(w, r.WithContext(ctx))
-				return
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid, username, ok := identify(r.Header, a.devUser)
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if username != "" && username != uid {
+			if _, done := a.adopted.Load(uid); !done {
+				if err := a.handler.AdoptUsernameData(uid, username); err != nil {
+					a.logger.Error("Couldn't adopt the data of %s: %+v", username, err)
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+					return
+				}
+				a.adopted.Store(uid, struct{}{})
 			}
 		}
 
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-	})
+		next.ServeHTTP(w, r.WithContext(user.ToContext(r.Context(), uid)))
+	}
 }
 
-func extractBearerToken(r *http.Request) string {
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return ""
+func identify(header http.Header, devUser string) (uid, username string, ok bool) {
+	if uid := header.Get(uidHeader); uid != "" {
+		return uid, header.Get(usernameHeader), true
 	}
-
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return ""
+	if devUser != "" {
+		return devUser, "", true
 	}
-
-	return parts[1]
+	return "", "", false
 }

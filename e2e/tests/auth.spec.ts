@@ -1,99 +1,61 @@
-import { expect, test } from '@playwright/test';
-import { emailField, projectsHeading, submitLoginForm } from '../support/auth';
-import { API_URL, DEX_URL } from '../support/env';
-import { PASSWORD, users } from '../support/users';
+import { expect as baseExpect, test as baseTest } from '@playwright/test';
+import { authHeaders } from '../support/auth';
+import { API_URL } from '../support/env';
+import { expect, test } from '../support/fixtures';
+import { uniqueName } from '../support/names';
+import { projectItem } from '../support/ui';
+import { users } from '../support/users';
 
-// These tests start without any session and use the real login form
+// Authentik's forward auth signs users in before a request reaches the app, so the app only sees its headers
 
-test.describe('login', () => {
-    for (const path of ['/', '/projects', '/activities']) {
-        test(`${path} sends a logged-out user to the login`, async ({ page }) => {
-            await page.goto(path);
-
-            await expect(page).toHaveURL(new RegExp(`^${DEX_URL}/`));
-            await expect(emailField(page)).toBeVisible();
-        });
-    }
-
-    test('brings the user back to the app after the login', async ({ page }) => {
-        await page.goto('/activities');
-        await submitLoginForm(page, users.alice);
-
-        // The app always continues on the start page after the login
-        await expect(projectsHeading(page)).toBeVisible({ timeout: 30_000 });
-        await expect(page).toHaveURL(/\/$/);
-        await expect(page.getByRole('button', { name: 'Logout' })).toBeVisible();
-        await expect(page.getByRole('link', { name: 'Login' })).toHaveCount(0);
-    });
-
-    test('keeps the session over a reload', async ({ page }) => {
-        await page.goto('/');
-        await submitLoginForm(page, users.alice);
-        await expect(projectsHeading(page)).toBeVisible({ timeout: 30_000 });
-
-        await page.reload();
-
-        await expect(projectsHeading(page)).toBeVisible();
-    });
-
-    test('rejects a wrong password', async ({ page }) => {
-        await page.goto('/');
-        await submitLoginForm(page, users.alice, `${PASSWORD}-wrong`);
-
-        await expect(page.getByText('Invalid Email Address and password.')).toBeVisible();
-        await expect(page).toHaveURL(new RegExp(`^${DEX_URL}/`));
-        await expect(projectsHeading(page)).toHaveCount(0);
-    });
-
-    test('rejects an unknown user', async ({ page }) => {
-        await page.goto('/');
-        await submitLoginForm(page, 'e2e-nobody@timetrack.local', PASSWORD);
-
-        await expect(page.getByText('Invalid Email Address and password.')).toBeVisible();
-        await expect(page).toHaveURL(new RegExp(`^${DEX_URL}/`));
-        await expect(projectsHeading(page)).toHaveCount(0);
-    });
-});
-
-test.describe('logout', () => {
-    test('ends the session', async ({ page }) => {
-        await page.goto('/');
-        await submitLoginForm(page, users.alice);
-        await expect(projectsHeading(page)).toBeVisible({ timeout: 30_000 });
-
-        await page.getByRole('button', { name: 'Logout' }).click();
-
-        // The app forgets the user and sends them to the login right away ...
-        await expect(page).toHaveURL(new RegExp(`^${DEX_URL}/`));
-        await expect(emailField(page)).toBeVisible();
-        const { origins } = await page.context().storageState();
-        expect(origins.flatMap((origin) => origin.localStorage).filter(({ name }) => name.startsWith('oidc.user:'))).toEqual([]);
-
-        // ... and opening the app again asks for the credentials as well
-        await page.goto('/projects');
-        await expect(page).toHaveURL(new RegExp(`^${DEX_URL}/`));
-        await expect(emailField(page)).toBeVisible();
-    });
-});
-
-test.describe('API without login', () => {
+baseTest.describe('API without the headers of forward auth', () => {
     for (const path of ['/projects/', '/activities/?day=2024-01-01']) {
-        test(`GET ${path} needs a token`, async ({ request }) => {
+        baseTest(`GET ${path} is rejected`, async ({ request }) => {
             const response = await request.get(`${API_URL}${path}`);
 
-            expect(response.status()).toBe(401);
+            baseExpect(response.status()).toBe(401);
         });
     }
 
-    test('rejects a token that is not valid', async ({ request }) => {
-        const response = await request.get(`${API_URL}/projects/`, { headers: { Authorization: 'Bearer not-a-token' } });
+    baseTest('a username alone is not enough', async ({ request }) => {
+        const response = await request.get(`${API_URL}/projects/`, { headers: { 'X-authentik-username': users.alice.username } });
 
-        expect(response.status()).toBe(401);
+        baseExpect(response.status()).toBe(401);
     });
 
-    test('rejects other authorization schemes', async ({ request }) => {
-        const response = await request.get(`${API_URL}/projects/`, { headers: { Authorization: 'Basic YWxpY2U6YWxpY2U=' } });
+    baseTest('a bearer token is not accepted any more', async ({ request }) => {
+        const response = await request.get(`${API_URL}/projects/`, { headers: { Authorization: 'Bearer some-token' } });
 
-        expect(response.status()).toBe(401);
+        baseExpect(response.status()).toBe(401);
     });
+});
+
+test('the API goes by the uid', async ({ login, request }) => {
+    const { api } = await login('alice');
+    const name = await api.createProject(uniqueName());
+
+    const sameUid = await request.get(`${API_URL}/projects/?page=1&per_page=1000&search_term=${encodeURIComponent(name)}`, {
+        headers: authHeaders({ uid: users.alice.uid, username: 'someone-else' }),
+    });
+
+    expect((await sameUid.json()).total).toBe(1);
+});
+
+test('logout leads to the sign-out of Authentik', async ({ login }) => {
+    const { page } = await login('alice');
+
+    await expect(page.getByRole('link', { name: 'Logout' })).toHaveAttribute('href', '/outpost.goauthentik.io/sign_out');
+});
+
+// Before forward auth, the data of a user was stored under their username (the subject of their OIDC token)
+test('a user takes over the data stored under their username', async ({ login }) => {
+    const username = uniqueName('legacy');
+    const before = await login({ uid: username });
+    const name = await before.api.createProject(uniqueName());
+    await before.api.startProject(name);
+
+    const after = await login({ uid: uniqueName('uid'), username });
+
+    await expect(projectItem(after.page, name)).toContainText('Active');
+    expect((await before.api.projects(name)).total).toBe(0);
 });

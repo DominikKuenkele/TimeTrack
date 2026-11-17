@@ -48,34 +48,25 @@ func main() {
 	}
 	defer database.Close()
 
-	server := server.NewServer("", "80", cfg.FrontendAddress, logger)
+	server := server.NewServer("", "80", logger)
 	server.AddHandler("/", defaultHandler(logger))
 	server.AddHandler("/health", healthHandler())
 
-	authenticatorAPI, err := authentification.BuildAuthenticator(
-		logger,
-		cfg.OAuthServerURL,
-		cfg.OAuthDiscoveryURL,
-		cfg.OAuthClientID,
-	)
-	if err != nil {
-		logger.Error("%v", err)
-		return
-	}
+	authenticatorAPI := authentification.BuildAuthenticator(logger, database, cfg.DevUser)
 
 	projectAPI, err := projects.BuildProject(logger, database)
 	if err != nil {
 		logger.Error("%v", err)
 		return
 	}
-	server.AddHandler(projects.Prefix+"/", authenticatorAPI.Authenticate(projectAPI.HTTPHandler))
+	server.AddAPIHandler(projects.Prefix+"/", authenticatorAPI.Authenticate(projectAPI.HTTPHandler))
 
 	activityAPI, err := activities.BuildActivity(logger, database)
 	if err != nil {
 		logger.Error("%v", err)
 		return
 	}
-	server.AddHandler(activities.Prefix+"/", authenticatorAPI.Authenticate(activityAPI.HTTPHandler))
+	server.AddAPIHandler(activities.Prefix+"/", authenticatorAPI.Authenticate(activityAPI.HTTPHandler))
 
 	if err := server.Start(); err != nil {
 		logger.Error("%v", err)

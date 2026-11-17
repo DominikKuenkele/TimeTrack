@@ -1,17 +1,10 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from './useAuth';
+import { Link } from 'react-router-dom';
 import './Header.css';
 
+const LOGOUT_URL = '/outpost.goauthentik.io/sign_out';
+
 const Header: React.FC = () => {
-    const { isLoggedIn, logout } = useAuth();
-    const navigate = useNavigate();
-
-    const logoutAction = async () => {
-        await logout();
-        navigate('/');
-    }
-
     return (
         <header className="header">
             <div className="header-container">
@@ -21,14 +14,11 @@ const Header: React.FC = () => {
                 <nav>
                     <Link to="/projects">Projects</Link>
                     <Link to="/activities">Activities</Link>
-                    {isLoggedIn
-                        ? <button onClick={logoutAction}>Logout</button>
-                        : <Link to="/auth/login">Login</Link>
-                    }
+                    <a href={LOGOUT_URL}>Logout</a>
                 </nav>
             </div>
         </header>
     );
 };
 
-export default Header; 
+export default Header;

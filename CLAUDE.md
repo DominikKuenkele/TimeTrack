@@ -1,9 +1,21 @@
 # TimeTrack
 
 Time tracking for projects. `backend/pkg/` is a Go REST API on Postgres (schema in
-`backend/database/init_database.sql`), `frontend/` a React + TypeScript app built with Vite. Login
-goes through OIDC; `compose.yaml` runs the whole dev stack including Dex as the provider
-(`backend/docker/dex/`, static users, no login session and no logout endpoint).
+`backend/database/init_database.sql`), `frontend/` a React + TypeScript app built with Vite.
+
+## Sign-in
+
+Authentik's forward auth in front of the app (Traefik middleware, configured in the server repo)
+signs users in on every request and passes them in `X-authentik-uid` and `X-authentik-username`.
+The app has no login of its own and holds no tokens; the backend answers 401 without the headers,
+so it must only be reachable through the proxy. Frontend and API share one host, the API under
+`/api` (Vite proxies it in the dev stack). Data belongs to the uid; data from before, stored under
+the username (the old OIDC subject), moves to the uid on the user's first request.
+- A request of an expired session gets Authentik's redirect to its login (or a 401), which `fetch`
+  can't follow: the frontend reloads the page for the login, at most once a minute so a login that
+  doesn't help can't loop. Logout is the outpost's `/outpost.goauthentik.io/sign_out`.
+- The dev stack has no Authentik: `DEV_USER` signs every request without the headers in as that
+  user. Never set it in production. The e2e tests send the headers per test user instead.
 
 ## Checks
 
@@ -14,7 +26,7 @@ goes through OIDC; `compose.yaml` runs the whole dev stack including Dex as the 
   check; fix it (or have it fixed in a separate MR first). No other security tooling for now.
 - `task up`: the dev stack (`docker compose`).
 - `task test:e2e`: Playwright tests in `e2e/` against the whole stack (`compose.yaml` plus
-  `compose.e2e.yaml`: no mounts, service-name URLs, Dex test users from `config.e2e.yaml`). Needs
+  `compose.e2e.yaml`: no mounts, service-name URLs, test users as forward auth headers). Needs
   docker; CI runs it as the `e2e` job. Not part of `task check`.
 
 ## Releasing
@@ -50,6 +62,6 @@ When you run as the GitLab agent (implementing an issue in CI, not in a session 
 
 - The design discussion already happened: the issue was judged clear enough, or its plan was
   approved. Implement it; don't stop to ask.
-- You run in the CI check image (Go, Node, `task`), without Postgres or Dex. Run the checks
+- You run in the CI check image (Go, Node, `task`), without Postgres. Run the checks
   above for what you change; never `task up` or `task test:e2e` (no docker; the MR pipeline's `e2e` job
   runs them). Type-check e2e changes with `npm run lint` in `e2e/`.

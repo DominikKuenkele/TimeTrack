@@ -1,5 +1,4 @@
-import { APIRequestContext, APIResponse, Page } from '@playwright/test';
-import { accessToken } from './auth';
+import { APIRequestContext, APIResponse } from '@playwright/test';
 import { API_URL } from './env';
 import { NAME_PREFIX } from './names';
 
@@ -30,15 +29,14 @@ interface DailyActivities {
     overtime: number;
 }
 
-// The backend API as the logged in user of a page, for preparing and checking data (and cleaning up)
+// The backend API as the user of a browser context, for preparing and checking data (and cleaning up)
 export class Api {
-    constructor(private readonly page: Page, private readonly request: APIRequestContext) { }
+    constructor(private readonly request: APIRequestContext) { }
 
     async raw(method: string, path: string, data?: unknown): Promise<APIResponse> {
-        const token = await accessToken(this.page);
         return this.request.fetch(`${API_URL}${path}`, {
             method,
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json' },
             data: data === undefined ? undefined : JSON.stringify(data),
         });
     }
