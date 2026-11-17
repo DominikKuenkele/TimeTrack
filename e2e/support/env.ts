@@ -1,3 +1,3 @@
 export const BASE_URL = process.env.BASE_URL ?? 'http://frontend:3000';
-export const API_URL = process.env.API_URL ?? 'http://backend';
-export const DEX_URL = process.env.DEX_URL ?? 'http://dex:5556';
+// On the app's host, as behind the reverse proxy in production
+export const API_URL = `${BASE_URL}/api`;

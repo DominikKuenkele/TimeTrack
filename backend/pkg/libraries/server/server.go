@@ -7,29 +7,34 @@ import (
 	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 )
 
+const apiPrefix = "/api"
+
 type Server interface {
 	Start() error
 	AddHandler(pattern string, handler http.HandlerFunc)
+	AddAPIHandler(pattern string, handler http.HandlerFunc)
 }
 
 type serverConfig struct {
-	address         string
-	port            string
-	frontendAddress string
-	mux             *http.ServeMux
-	logger          logger.Logger
+	address string
+	port    string
+	mux     *http.ServeMux
+	apiMux  *http.ServeMux
+	logger  logger.Logger
 }
 
 var _ Server = &serverConfig{}
 
-func NewServer(address, port, frontendAddress string, logger logger.Logger) Server {
-	return &serverConfig{
-		address:         address,
-		port:            port,
-		frontendAddress: frontendAddress,
-		mux:             http.NewServeMux(),
-		logger:          logger,
+func NewServer(address, port string, logger logger.Logger) Server {
+	s := &serverConfig{
+		address: address,
+		port:    port,
+		mux:     http.NewServeMux(),
+		apiMux:  http.NewServeMux(),
+		logger:  logger,
 	}
+	s.mux.Handle(apiPrefix+"/", http.StripPrefix(apiPrefix, s.apiMux))
+	return s
 }
 
 func (s *serverConfig) Start() error {
@@ -41,7 +46,11 @@ func (s *serverConfig) Start() error {
 }
 
 func (s *serverConfig) AddHandler(pattern string, handler http.HandlerFunc) {
-	s.mux.Handle(pattern, s.corsMiddleware(s.logMiddleware(handler)))
+	s.mux.Handle(pattern, s.logMiddleware(handler))
+}
+
+func (s *serverConfig) AddAPIHandler(pattern string, handler http.HandlerFunc) {
+	s.apiMux.Handle(pattern, s.logMiddleware(handler))
 }
 
 func (s *serverConfig) logMiddleware(h http.HandlerFunc) http.HandlerFunc {
@@ -49,21 +58,5 @@ func (s *serverConfig) logMiddleware(h http.HandlerFunc) http.HandlerFunc {
 		s.logger.Info("Received request: %s %s", r.Method, r.URL.String())
 
 		h.ServeHTTP(w, r)
-	})
-}
-
-func (s *serverConfig) corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", s.frontendAddress)
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
 	})
 }

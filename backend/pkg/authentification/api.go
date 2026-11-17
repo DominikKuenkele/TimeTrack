@@ -2,56 +2,42 @@ package authentification
 
 import (
 	"net/http"
-	"strings"
 
-	"github.com/DominikKuenkele/TimeTrack/libraries/logger"
 	"github.com/DominikKuenkele/TimeTrack/libraries/user"
 )
 
-const Prefix = "/user"
+const uidHeader = "X-authentik-uid"
 
 type API interface {
 	Authenticate(next http.HandlerFunc) http.HandlerFunc
 }
 
 type apiImpl struct {
-	logger                  logger.Logger
-	authentificationHandler Handler
+	devUser string
 }
 
 var _ API = &apiImpl{}
 
-func NewAPI(logger logger.Logger, authentificationHandler Handler) API {
-	return &apiImpl{
-		logger:                  logger,
-		authentificationHandler: authentificationHandler,
-	}
+func NewAPI(devUser string) API {
+	return &apiImpl{devUser: devUser}
 }
 
+// Authentik's forward auth in front of the app signs the user in and passes them in headers.
 func (a *apiImpl) Authenticate(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if token := extractBearerToken(r); token != "" {
-			if userID, err := a.authentificationHandler.VerifyBearerToken(token); err == nil {
-				ctx := user.ToContext(r.Context(), userID)
-				next.ServeHTTP(w, r.WithContext(ctx))
-				return
-			}
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid := identify(r.Header, a.devUser)
+		if uid == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
 		}
 
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-	})
+		next.ServeHTTP(w, r.WithContext(user.ToContext(r.Context(), uid)))
+	}
 }
 
-func extractBearerToken(r *http.Request) string {
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return ""
+func identify(header http.Header, devUser string) string {
+	if uid := header.Get(uidHeader); uid != "" {
+		return uid
 	}
-
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return ""
-	}
-
-	return parts[1]
+	return devUser
 }

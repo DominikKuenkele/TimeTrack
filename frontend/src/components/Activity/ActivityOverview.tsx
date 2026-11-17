@@ -1,10 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { activityService } from '../../services/api';
 import { DailyActivities } from '../../types';
 import { extractErrorMessage } from '../../utils/errorUtils';
 import { dateToDayString, formatRuntime, parseDayInput, shiftDay } from '../../utils/timeUtils';
-import { useAuth } from '../useAuth';
 import ActivityList from './ActivityList';
 import './ActivityOverview.css';
 
@@ -21,21 +19,9 @@ const ActivityOverview: React.FC = () => {
 
     const [day, setDay] = useState<Date>(new Date());
 
-    const { isLoggedIn, isLoading } = useAuth();
-    const navigate = useNavigate();
-
     const [reload, setReload] = useState<number>(0);
 
     useEffect(() => {
-        if (!isLoading && !isLoggedIn) {
-            navigate('/login');
-        }
-    }, [isLoggedIn, isLoading, navigate])
-
-    useEffect(() => {
-        if (!isLoggedIn) {
-            return;
-        }
         let cancelled = false;
         activityService.getDailyActivities(day)
             .then((data) => {
@@ -54,7 +40,7 @@ const ActivityOverview: React.FC = () => {
                 console.error(err);
             });
         return () => { cancelled = true; };
-    }, [isLoggedIn, day, reload])
+    }, [day, reload])
 
     const setUpdateActivities = useCallback((update: boolean) => {
         if (update) setReload((n) => n + 1);

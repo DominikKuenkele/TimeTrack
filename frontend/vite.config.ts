@@ -8,6 +8,9 @@ export default defineConfig({
         // The e2e stack (compose.e2e.yaml) reaches the dev server by its service name
         allowedHosts: ['frontend'],
         open: true,
+        proxy: {
+            '/api': process.env.API_PROXY_TARGET ?? 'http://localhost:8080',
+        },
     },
     test: {
         environment: 'jsdom',

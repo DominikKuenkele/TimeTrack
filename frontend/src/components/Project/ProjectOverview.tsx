@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { projectService } from '../../services/api';
 import { Project } from '../../types';
 import { extractErrorMessage } from '../../utils/errorUtils';
-import { useAuth } from '../useAuth';
 import SearchForm from '../SearchForm';
 import CreateProjectForm from './CreateProjectForm';
 import ProjectList from './ProjectList';
@@ -25,19 +23,7 @@ const ProjectOverview: React.FC = () => {
 
     const [reload, setReload] = useState<number>(0);
 
-    const { isLoggedIn } = useAuth();
-    const navigate = useNavigate();
-
     useEffect(() => {
-        if (!isLoggedIn) {
-            navigate('/login');
-        }
-    }, [isLoggedIn, navigate])
-
-    useEffect(() => {
-        if (!isLoggedIn) {
-            return;
-        }
         let cancelled = false;
         projectService.getProjectsLike(currentPage, perPage, searchTerm)
             .then((data) => {
@@ -61,7 +47,7 @@ const ProjectOverview: React.FC = () => {
                 console.error(err);
             });
         return () => { cancelled = true; };
-    }, [isLoggedIn, currentPage, perPage, searchTerm, reload])
+    }, [currentPage, perPage, searchTerm, reload])
 
     const fetchProjects = useCallback(() => setReload((n) => n + 1), []);
 

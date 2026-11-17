@@ -1,20 +1,16 @@
 import { Page, Route } from '@playwright/test';
-import { API_URL, BASE_URL } from '../support/env';
-import { emailField, projectsHeading, submitLoginForm } from '../support/auth';
-import { users } from '../support/users';
+import { API_URL } from '../support/env';
 import { expect, test } from '../support/fixtures';
 import { pastDay, uniqueName } from '../support/names';
 import { activityItem, createProject, goToActivities, openChangeDialogue, projectItem, submitChange } from '../support/ui';
 
-// Answers like the backend would, so that the browser accepts the response (CORS)
 const respond = (route: Route, status: number) => route.fulfill({
     status,
     contentType: 'application/json',
-    headers: { 'Access-Control-Allow-Origin': BASE_URL, 'Access-Control-Allow-Credentials': 'true' },
     body: JSON.stringify({ error: 'Internal Error', message: 'something broke' }),
 });
 
-// Lets the requests with another method (and the CORS preflight) through to the backend
+// Lets the requests with another method through to the backend
 const failRequests = (page: Page, method: string, url: RegExp, how: number | 'unreachable' = 500) =>
     page.route(url, (route) => {
         if (route.request().method() !== method) return route.fallback();
@@ -153,26 +149,39 @@ test.describe('backend is not reachable', () => {
     });
 });
 
-test.describe('token is not accepted', () => {
-    for (const reason of ['is not a token', 'has expired'] as const) {
-        test(`logs in again when the token ${reason}`, async ({ login }) => {
+// Authentik answers a request of an expired session with a redirect to its login (or a 401), which only a page
+// load can follow
+const expireSession = (page: Page, how: 'redirect' | 401, times?: number) =>
+    page.route(projectListUrl, (route) => route.fulfill(how === 'redirect'
+        ? { status: 302, headers: { Location: '/outpost.goauthentik.io/start' } }
+        : { status: 401, body: 'Unauthorized' }), { times });
+
+test.describe('session has expired', () => {
+    for (const how of ['redirect', 401] as const) {
+        test(`reloads the page for the login (${how})`, async ({ login }) => {
             const { page, api } = await login('alice');
             const name = await api.createProject(uniqueName());
-            await page.evaluate((spoilExpiry) => {
-                const key = Object.keys(window.localStorage).find((k) => k.startsWith('oidc.user:')) as string;
-                const user = JSON.parse(window.localStorage.getItem(key) as string);
-                if (spoilExpiry) user.expires_at = Math.floor(Date.now() / 1000) - 3600;
-                else user.access_token = 'not-a-token';
-                window.localStorage.setItem(key, JSON.stringify(user));
-            }, reason === 'has expired');
+            await expireSession(page, how, 1);
+            let loads = 0;
+            page.on('load', () => loads++);
 
-            // the app sends the user to the login of Dex and comes back with a new token
             await page.reload();
-            await expect(emailField(page)).toBeVisible();
-            await submitLoginForm(page, users.alice);
 
-            await expect(projectsHeading(page)).toBeVisible({ timeout: 30_000 });
             await expect(projectItem(page, name)).toBeVisible();
+            expect(loads).toBe(2);
         });
     }
+
+    test('reloads only once when the login does not help', async ({ login }) => {
+        const { page } = await login('alice');
+        await expireSession(page, 'redirect');
+        let loads = 0;
+        page.on('load', () => loads++);
+
+        await page.reload();
+
+        await expect.poll(() => loads).toBe(2);
+        await expect(page.locator('.project-overview-error')).toContainText('Error: Session expired');
+        expect(loads).toBe(2);
+    });
 });

@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getUser } from '../utils/auth';
 import { activityService, projectService } from './api';
-
-vi.mock('../utils/auth', () => ({ getUser: vi.fn() }));
 
 const respond = (body: unknown, init: { status?: number; statusText?: string } = {}) =>
     new Response(body === undefined ? '' : JSON.stringify(body), init);
@@ -14,7 +11,7 @@ const project = { id: 1, name: 'a', runtimeInSeconds: 10, startedAt: null };
 beforeEach(() => {
     fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    vi.mocked(getUser).mockResolvedValue({ access_token: 'token' } as Awaited<ReturnType<typeof getUser>>);
+    window.sessionStorage.clear();
     vi.spyOn(console, 'log').mockImplementation(() => { });
 });
 
@@ -47,47 +44,62 @@ describe('projectService.getProjectsLike', () => {
         expect(result.projects).toHaveLength(1);
     });
 
-    it('sends page, page size and search term with the bearer token', async () => {
+    it('asks the API on the same host for page, page size and search term', async () => {
         fetchMock.mockResolvedValue(respond({ ...page, activeProject: null }));
 
         await projectService.getProjectsLike(3, 10, 'abc');
 
         const [url, init] = fetchMock.mock.calls[0];
-        expect(String(url)).toContain('/projects/?page=3&per_page=10&search_term=abc');
-        expect((init?.headers as Headers).get('Authorization')).toBe('Bearer token');
-    });
-
-    it('rejects without a token and does not call the API', async () => {
-        vi.mocked(getUser).mockResolvedValue(null);
-
-        await expect(projectService.getProjectsLike()).rejects.toThrow('No access token available');
-        expect(fetchMock).not.toHaveBeenCalled();
+        expect(String(url)).toBe('/api/projects/?page=3&per_page=10&search_term=abc');
+        expect(init?.redirect).toBe('manual');
     });
 });
 
 describe('error handling', () => {
-    it('redirects to the login on 401 and rejects', async () => {
-        const location = { href: '/projects' };
-        vi.stubGlobal('location', location);
-        fetchMock.mockResolvedValue(respond({}, { status: 401 }));
+    const reload = vi.fn();
+    const redirectToLogin = { type: 'opaqueredirect', status: 0, ok: false } as Response;
 
-        await expect(projectService.getProjectsLike()).rejects.toThrow('Unauthorized');
-        expect(location.href).toBe('/auth/login');
+    beforeEach(() => {
+        reload.mockReset();
+        vi.stubGlobal('location', { reload });
     });
 
-    it('rejects on other error statuses without redirecting', async () => {
-        const location = { href: '/projects' };
-        vi.stubGlobal('location', location);
+    it.each([
+        ['is redirected to the login', () => redirectToLogin],
+        ['gets a 401', () => respond({}, { status: 401 })],
+    ])('reloads the page for the login when a request %s', async (_, response) => {
+        fetchMock.mockResolvedValue(response());
+
+        await expect(projectService.getProjectsLike()).rejects.toThrow('Session expired');
+        expect(reload).toHaveBeenCalledOnce();
+    });
+
+    it('reloads only once a minute, so a login that does not help cannot loop', async () => {
+        fetchMock.mockResolvedValue(redirectToLogin);
+        const now = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+
+        await expect(projectService.getProjectsLike()).rejects.toThrow('Session expired');
+        now.mockReturnValue(1_000_000 + 59_000);
+        await expect(projectService.getProjectsLike()).rejects.toThrow('Session expired');
+        expect(reload).toHaveBeenCalledOnce();
+
+        now.mockReturnValue(1_000_000 + 61_000);
+        await expect(projectService.getProjectsLike()).rejects.toThrow('Session expired');
+        expect(reload).toHaveBeenCalledTimes(2);
+    });
+
+    it('rejects on other error statuses without reloading', async () => {
         fetchMock.mockResolvedValue(respond({}, { status: 500, statusText: 'Internal Server Error' }));
 
         await expect(projectService.getProjectsLike()).rejects.toThrow('API request failed: Internal Server Error');
-        expect(location.href).toBe('/projects');
+        expect(reload).not.toHaveBeenCalled();
     });
 
     it('passes network errors on', async () => {
         fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
 
         await expect(projectService.getProjectsLike()).rejects.toThrow('Failed to fetch');
+        expect(reload).not.toHaveBeenCalled();
     });
 });
 

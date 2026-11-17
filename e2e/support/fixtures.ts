@@ -1,8 +1,8 @@
 import { BrowserContext, Page, test as base } from '@playwright/test';
 import { Api } from './api';
-import { projectsHeading } from './auth';
+import { authHeaders, projectsHeading } from './auth';
 import { BASE_URL } from './env';
-import { storageStatePath, UserKey } from './users';
+import { UserKey, users } from './users';
 
 export interface Session {
     context: BrowserContext;
@@ -11,7 +11,7 @@ export interface Session {
 }
 
 interface Fixtures {
-    // Opens the app as a user, with the token saved by auth.setup.ts
+    // Opens the app as a user, whose every request carries the headers of forward auth
     login: (user: UserKey, path?: string) => Promise<Session>;
 }
 
@@ -22,7 +22,7 @@ export const test = base.extend<Fixtures>({
         await use(async (user, path = '/projects') => {
             const context = await browser.newContext({
                 baseURL: BASE_URL,
-                storageState: storageStatePath(user),
+                extraHTTPHeaders: authHeaders(users[user]),
                 timezoneId: 'UTC',
                 locale: 'en-US',
             });
@@ -31,7 +31,7 @@ export const test = base.extend<Fixtures>({
             // the activities page also has to load the activities of the day, before its summary means anything
             await projectsHeading(page).or(page.locator('.activity-overview[data-day]')).waitFor({ timeout: 30_000 });
 
-            const session = { context, page, api: new Api(page, context.request) };
+            const session = { context, page, api: new Api(context.request) };
             sessions.push(session);
             return session;
         });
