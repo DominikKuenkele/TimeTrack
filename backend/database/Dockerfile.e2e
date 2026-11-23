@@ -1,4 +1,4 @@
 # The database of the e2e stack (compose.e2e.yaml) and the test slot: the dev setup mounts the schema, a remote docker daemon can't
-FROM postgres:latest@sha256:2ea8630df176ad090ec92136dee850397c5af8781e4bcf2e4162593691c61bbc
+FROM postgres:latest@sha256:766ddae4967301b9802b341bb596905f11dd5c558149690a7a4d80c2f61bbcf9
 
 COPY init_database.sql /docker-entrypoint-initdb.d/
